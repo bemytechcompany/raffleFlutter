@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Menu, X, Zap } from 'lucide-react'
+import Image from 'next/image'
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false)
@@ -44,13 +45,13 @@ const Navigation = () => {
               className="flex items-center gap-2"
             >
               <div className="relative">
-                <div className="w-8 h-8 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-lg flex items-center justify-center">
-                  <Zap size={20} className="text-white" />
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                  <Image src="/logo.png" alt="Logo" width={32} height={32}  />
                 </div>
-                <div className="absolute inset-0 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-lg blur opacity-60 animate-pulse" />
+                <div className="absolute inset-0 rounded-lg blur opacity-60 animate-pulse" />
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-raffle-green to-raffle-green-light bg-clip-text text-transparent">
-                RaffleFlutter
+                {process.env.NEXT_PUBLIC_NAME_APP}
               </span>
             </motion.div>
 

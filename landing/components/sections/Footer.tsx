@@ -2,16 +2,18 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Zap, 
-  Mail, 
-  Twitter, 
-  Instagram, 
-  Facebook, 
+import {
+  Zap,
+  Mail,
+  Twitter,
+  Instagram,
+  Facebook,
   Github,
   Heart,
-  ArrowUp
+  ArrowUp, MessageCircle,
+  Linkedin
 } from 'lucide-react'
+import Image from 'next/image'
 
 const Footer = () => {
   const scrollToTop = () => {
@@ -22,28 +24,20 @@ const Footer = () => {
     product: [
       { name: 'Características', href: '#features' },
       { name: 'Descargar', href: '#download' },
-      { name: 'Soporte', href: '#support' },
-      { name: 'FAQ', href: '#faq' },
     ],
     company: [
-      { name: 'Sobre Nosotros', href: '#about' },
-      { name: 'Blog', href: '#blog' },
-      { name: 'Prensa', href: '#press' },
-      { name: 'Carreras', href: '#careers' },
+      { name: 'Sobre Nosotros', href: process.env.NEXT_PUBLIC_LINK_BEMYTECH },
     ],
     legal: [
-      { name: 'Privacidad', href: '#privacy' },
-      { name: 'Términos', href: '#terms' },
-      { name: 'Cookies', href: '#cookies' },
-      { name: 'Seguridad', href: '#security' },
+      { name: 'Privacidad', href: process.env.NEXT_PUBLIC_LINK_PRIVACIDAD },
     ],
   }
 
   const socialLinks = [
-    { icon: Twitter, href: '#twitter', label: 'Twitter' },
-    { icon: Instagram, href: '#instagram', label: 'Instagram' },
-    { icon: Facebook, href: '#facebook', label: 'Facebook' },
-    { icon: Github, href: '#github', label: 'Github' },
+    { icon: MessageCircle, href: process.env.NEXT_PUBLIC_WHATSAPP_URL, label: 'WhatsApp' },
+    { icon: Facebook, href: process.env.NEXT_PUBLIC_FACEBOOK_URL, label: 'Facebook' },
+    { icon: Linkedin, href: process.env.NEXT_PUBLIC_LINKEDIN_URL, label: 'Linkedin' },
+
   ]
 
   return (
@@ -55,11 +49,11 @@ const Footer = () => {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Contenido principal del footer */}
         <div className="py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
-            
+
             {/* Información de la marca */}
             <div className="lg:col-span-2">
               <motion.div
@@ -71,26 +65,27 @@ const Footer = () => {
               >
                 <div className="flex items-center gap-2 mb-4">
                   <div className="relative">
-                    <div className="w-10 h-10 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-lg flex items-center justify-center">
-                      <Zap size={20} className="text-white" />
+                    <div className="w-10 h-10  rounded-lg flex items-center justify-center">
+                      <Image src="/logo.png" alt="Logo" width={32} height={32} />
                     </div>
-                    <div className="absolute inset-0 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-lg blur opacity-60 animate-pulse" />
+                    <div className="absolute inset-0 rounded-lg blur opacity-60 animate-pulse" />
                   </div>
                   <span className="text-2xl font-bold bg-gradient-to-r from-raffle-green to-raffle-green-light bg-clip-text text-transparent">
-                    RaffleFlutter
+                    {process.env.NEXT_PUBLIC_NAME_APP}
                   </span>
                 </div>
                 <p className="text-gray-300 leading-relaxed mb-6">
-                  La aplicación más avanzada para gestionar rifas y sorteos. 
+                  La aplicación más avanzada para gestionar rifas y sorteos.
                   Diseñada con tecnología de vanguardia para profesionales que buscan excelencia.
                 </p>
-                
+
                 {/* Redes sociales */}
                 <div className="flex gap-4">
                   {socialLinks.map((social, index) => (
                     <motion.a
                       key={index}
                       href={social.href}
+                      target="_blank"
                       whileHover={{ scale: 1.1, y: -2 }}
                       whileTap={{ scale: 0.9 }}
                       className="w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center hover:bg-raffle-green/20 hover:border-raffle-green/50 border border-gray-700 transition-all duration-300 group"
@@ -115,7 +110,7 @@ const Footer = () => {
                 <ul className="space-y-2">
                   {footerLinks.product.map((link, index) => (
                     <li key={index}>
-                      <a 
+                      <a
                         href={link.href}
                         className="text-gray-400 hover:text-raffle-green transition-colors duration-200 block py-1"
                       >
@@ -139,8 +134,9 @@ const Footer = () => {
                 <ul className="space-y-2">
                   {footerLinks.company.map((link, index) => (
                     <li key={index}>
-                      <a 
+                      <a
                         href={link.href}
+                        target="_blank"
                         className="text-gray-400 hover:text-raffle-green transition-colors duration-200 block py-1"
                       >
                         {link.name}
@@ -163,8 +159,9 @@ const Footer = () => {
                 <ul className="space-y-2">
                   {footerLinks.legal.map((link, index) => (
                     <li key={index}>
-                      <a 
+                      <a
                         href={link.href}
+                        target="_blank"
                         className="text-gray-400 hover:text-raffle-green transition-colors duration-200 block py-1"
                       >
                         {link.name}
@@ -178,7 +175,7 @@ const Footer = () => {
         </div>
 
         {/* Newsletter */}
-        <motion.div
+        {/* <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
@@ -207,7 +204,7 @@ const Footer = () => {
               </motion.button>
             </div>
           </div>
-        </motion.div>
+        </motion.div> */}
 
         {/* Línea divisoria */}
         <div className="border-t border-gray-800" />
@@ -222,11 +219,11 @@ const Footer = () => {
               viewport={{ once: true }}
               className="flex items-center gap-2 text-gray-400"
             >
-              <span>© 2025 RaffleFlutter. Hecho con</span>
+              <span>© 2025 Todos los derechos reservados {process.env.NEXT_PUBLIC_NAME_APP}. Hecho con</span>
               <Heart size={16} className="text-raffle-green animate-pulse" />
-              <span>para organizadores innovadores producto de Bemytech.</span>
+              <span>para organizadores innovadores producto de Bemytech company.</span>
             </motion.div>
-            
+
             <motion.button
               onClick={scrollToTop}
               whileHover={{ scale: 1.1, y: -2 }}

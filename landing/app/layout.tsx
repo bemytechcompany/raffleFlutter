@@ -5,32 +5,32 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'RaffleFlutter - La App de Rifas del Futuro',
-  description: 'Gestiona rifas y sorteos de manera profesional con RaffleFlutter. Tecnología avanzada, diseño elegante y funcionalidades completas para organizar tus eventos.',
+  title: process.env.NEXT_PUBLIC_NAME_APP,
+  description: 'Gestiona rifas y sorteos de manera profesional con ' + process.env.NEXT_PUBLIC_NAME_APP + '. Tecnología avanzada, diseño elegante y funcionalidades completas para organizar tus eventos.',
   keywords: 'rifas, sorteos, aplicación móvil, gestión de eventos, tickets digitales, QR codes',
-  authors: [{ name: 'RaffleFlutter Team' }],
-  creator: 'RaffleFlutter',
-  publisher: 'RaffleFlutter',
+  authors: [{ name: 'Bemytech.io' }],
+  creator: 'Bemytech.io',
+  publisher: 'Bemytech.io',
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://raffleflutter.com'),
+  metadataBase: new URL('https://raffle.bemytech.io'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'RaffleFlutter - La App de Rifas del Futuro',
-    description: 'Gestiona rifas y sorteos de manera profesional con RaffleFlutter. Tecnología avanzada, diseño elegante y funcionalidades completas.',
-    url: 'https://raffleflutter.com',
-    siteName: 'RaffleFlutter',
+    title: process.env.NEXT_PUBLIC_NAME_APP,
+    description: 'Gestiona rifas y sorteos de manera profesional con ' + process.env.NEXT_PUBLIC_NAME_APP + '. Tecnología avanzada, diseño elegante y funcionalidades completas.',
+    url: 'https://raffle.bemytech.io',
+    siteName: process.env.NEXT_PUBLIC_NAME_APP,
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'RaffleFlutter - La App de Rifas del Futuro',
+        alt: process.env.NEXT_PUBLIC_NAME_APP,
       },
     ],
     locale: 'es_ES',
@@ -38,8 +38,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'RaffleFlutter - La App de Rifas del Futuro',
-    description: 'Gestiona rifas y sorteos de manera profesional con RaffleFlutter.',
+    title: process.env.NEXT_PUBLIC_NAME_APP,
+    description: 'Gestiona rifas y sorteos de manera profesional con ' + process.env.NEXT_PUBLIC_NAME_APP + '.',
     images: ['/og-image.jpg'],
   },
   robots: {

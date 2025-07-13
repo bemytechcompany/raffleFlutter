@@ -81,9 +81,8 @@ const HeroSection = () => {
             className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 leading-tight"
           >
             <span className="bg-gradient-to-r from-white via-raffle-green to-raffle-green-light bg-clip-text text-transparent">
-              Raffle
+              {process.env.NEXT_PUBLIC_NAME_APP}
             </span>
-            <span className="text-white">Flutter</span>
           </motion.h1>
 
           {/* Subtítulo */}

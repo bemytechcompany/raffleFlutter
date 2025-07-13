@@ -104,7 +104,7 @@ const FeaturesSection = () => {
           
           <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
             Cada función está cuidadosamente diseñada para optimizar tu experiencia. 
-            Desde la creación hasta la gestión completa, RaffleFlutter te da el control total.
+            Desde la creación hasta la gestión completa, {process.env.NEXT_PUBLIC_NAME_APP} te da el control total.
           </p>
         </motion.div>
 
@@ -172,7 +172,7 @@ const FeaturesSection = () => {
         </motion.div>
 
         {/* Características adicionales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="how-it-works" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {additionalFeatures.map((feature, index) => (
             <FeatureCard
               key={index}

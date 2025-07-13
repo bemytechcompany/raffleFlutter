@@ -37,7 +37,7 @@ const DownloadSection = () => {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
+
         {/* Encabezado */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
@@ -46,22 +46,22 @@ const DownloadSection = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-raffle-green/10 rounded-full border border-raffle-green/30 mb-6">
+          <div id="dowloadup" className="inline-flex items-center gap-2 px-4 py-2 bg-raffle-green/10 rounded-full border border-raffle-green/30 mb-6">
             <Download size={16} className="text-raffle-green" />
             <span className="text-sm font-medium text-raffle-green">
               Disponible Ahora
             </span>
           </div>
-          
+
           <h2 className="text-4xl md:text-6xl font-bold text-white mb-6">
             Descarga{' '}
             <span className="bg-gradient-to-r from-raffle-green to-raffle-green-light bg-clip-text text-transparent">
-              RaffleFlutter
+              {process.env.NEXT_PUBLIC_NAME_APP}
             </span>
           </h2>
-          
+
           <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
-            Disponible para iOS y Android. Comienza a revolucionar la forma en que organizas 
+            Disponible para iOS y Android. Comienza a revolucionar la forma en que organizas
             tus rifas y sorteos con la tecnología más avanzada.
           </p>
         </motion.div>
@@ -105,15 +105,16 @@ const DownloadSection = () => {
         >
           {/* App Store */}
           <motion.a
-            href="#"
+            href={process.env.NEXT_PUBLIC_LINK_IOS}
+            target="_blank"
             whileHover={{ scale: 1.05, y: -5 }}
             whileTap={{ scale: 0.95 }}
             className="group relative overflow-hidden bg-gradient-to-r from-gray-800 to-gray-700 border-2 border-gray-600 rounded-2xl p-4 w-64 hover:from-gray-700 hover:to-gray-600 hover:border-raffle-green/50 transition-all duration-300"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-raffle-green/10 to-raffle-green-light/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <div className="relative z-10 flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-xl flex items-center justify-center">
-                <Apple size={24} className="text-white" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center">
+                <img src="Appstore.png" alt="App Store" className="w-full h-full" />
               </div>
               <div>
                 <div className="text-sm text-gray-400">Descargar en</div>
@@ -124,19 +125,40 @@ const DownloadSection = () => {
 
           {/* Google Play */}
           <motion.a
-            href="#"
+            href={process.env.NEXT_PUBLIC_LINK_ANDROID}
+            target="_blank"
             whileHover={{ scale: 1.05, y: -5 }}
             whileTap={{ scale: 0.95 }}
             className="group relative overflow-hidden bg-gradient-to-r from-gray-800 to-gray-700 border-2 border-gray-600 rounded-2xl p-4 w-64 hover:from-gray-700 hover:to-gray-600 hover:border-raffle-green/50 transition-all duration-300"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-raffle-green/10 to-raffle-green-light/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <div className="relative z-10 flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-xl flex items-center justify-center">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-white">
-                  <path d="M3 20.5L13.09 10.41L3 0.5V20.5Z" fill="currentColor"/>
-                  <path d="M16.58 8.42L13.09 10.41L16.58 12.4L21.5 10.41L16.58 8.42Z" fill="currentColor"/>
-                  <path d="M3 20.5L13.09 10.41L16.58 12.4L21.5 10.41L13.09 20.5L3 20.5Z" fill="currentColor"/>
-                  <path d="M13.09 10.41L3 0.5L16.58 8.42L21.5 10.41L13.09 10.41Z" fill="currentColor"/>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center">
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 40 40"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-full h-full"
+                >
+                  <path fill="none" d="M0,0h40v40H0V0z" />
+                  <g>
+                    <path
+                      d="M19.7,19.2L4.3,35.3c0,0,0,0,0,0c0.5,1.7,2.1,3,4,3c0.8,0,1.5-0.2,2.1-0.6l0,0l17.4-9.9L19.7,19.2z"
+                      fill="#EA4335"
+                    />
+                    <path
+                      d="M35.3,16.4L35.3,16.4l-7.5-4.3l-8.4,7.4l8.5,8.3l7.5-4.2c1.3-0.7,2.2-2.1,2.2-3.6C37.5,18.5,36.6,17.1,35.3,16.4z"
+                      fill="#FBBC04"
+                    />
+                    <path
+                      d="M4.3,4.7C4.2,5,4.2,5.4,4.2,5.8v28.5c0,0.4,0,0.7,0.1,1.1l16-15.7L4.3,4.7z"
+                      fill="#4285F4"
+                    />
+                    <path
+                      d="M19.8,20l8-7.9L10.5,2.3C9.9,1.9,9.1,1.7,8.3,1.7c-1.9,0-3.6,1.3-4,3c0,0,0,0,0,0L19.8,20z"
+                      fill="#34A853"
+                    />
+                  </g>
                 </svg>
               </div>
               <div>
@@ -156,10 +178,10 @@ const DownloadSection = () => {
           className="relative"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-white/2 rounded-3xl backdrop-blur-sm border border-white/10" />
-          
+
           <div className="relative z-10 p-8 md:p-12">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-              
+
               {/* Contenido */}
               <div>
                 <div className="mb-6">
@@ -170,7 +192,7 @@ const DownloadSection = () => {
                     Optimizada para Móviles
                   </h3>
                   <p className="text-lg text-gray-300 leading-relaxed">
-                    Interfaz diseñada específicamente para dispositivos móviles. 
+                    Interfaz diseñada específicamente para dispositivos móviles.
                     Navegación intuitiva, controles táctiles optimizados y experiencia fluida.
                   </p>
                 </div>
@@ -192,7 +214,7 @@ const DownloadSection = () => {
                     >
                       <div className="w-6 h-6 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-full flex items-center justify-center flex-shrink-0">
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                          <path d="M3.5 6L5.5 8L8.5 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M3.5 6L5.5 8L8.5 4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                       </div>
                       <span className="text-gray-300">{feature}</span>
@@ -212,17 +234,17 @@ const DownloadSection = () => {
                       <div className="p-6 h-full flex flex-col">
                         <div className="flex items-center justify-between mb-6">
                           <div className="w-8 h-8 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-lg" />
-                          <div className="text-white font-bold text-lg">RaffleFlutter</div>
+                          <div className="text-white font-bold text-lg">{process.env.NEXT_PUBLIC_NAME_APP}</div>
                           <div className="w-8 h-8 bg-gray-700 rounded-lg" />
                         </div>
-                        
+
                         <div className="space-y-4 flex-1">
                           <div className="h-20 bg-gradient-to-r from-raffle-green/20 to-raffle-green-light/20 rounded-xl border border-raffle-green/30" />
                           <div className="h-16 bg-white/5 rounded-xl" />
                           <div className="h-16 bg-white/5 rounded-xl" />
                           <div className="h-16 bg-white/5 rounded-xl" />
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-2 mt-4">
                           <div className="h-8 bg-raffle-green/20 rounded-lg" />
                           <div className="h-8 bg-raffle-green/20 rounded-lg" />
@@ -230,7 +252,7 @@ const DownloadSection = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Efectos de brillo */}
                   <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-raffle-green/10 to-transparent rounded-[3rem] animate-pulse" />
                 </div>
@@ -255,7 +277,10 @@ const DownloadSection = () => {
           </p>
           <AnimatedButton
             size="lg"
-            className="min-w-64"
+            className="min-w-64 mx-auto"
+            onClick={() => {
+              document.getElementById('dowloadup')?.scrollIntoView({ behavior: 'smooth' })
+            }}
           >
             <Download size={20} />
             Descargar Ahora
