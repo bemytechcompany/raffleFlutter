@@ -47,3 +47,16 @@ class DeleteRaffle extends RaffleDetailsEvent {
   @override
   List<Object?> get props => [raffleId];
 }
+
+class SetWinningNumber extends RaffleDetailsEvent {
+  final int raffleId;
+  final String winningNumber;
+
+  const SetWinningNumber({
+    required this.raffleId,
+    required this.winningNumber,
+  });
+
+  @override
+  List<Object?> get props => [raffleId, winningNumber];
+}

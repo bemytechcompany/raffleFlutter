@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/giveaway.dart';
 import '../bloc/giveaway_bloc.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class UpdateGiveawayStatusButton extends StatelessWidget {
   final Giveaway giveaway;
@@ -15,7 +16,11 @@ class UpdateGiveawayStatusButton extends StatelessWidget {
         ElevatedButton.icon(
           icon: const Icon(Icons.check_circle),
           label: const Text('Marcar como Completado'),
-          style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.buttonGreenBackground,
+            foregroundColor: AppColors.buttonGreenForeground,
+            side: BorderSide(color: AppColors.buttonGreenBorder),
+          ),
           onPressed: () {
             context.read<GiveawayBloc>().add(
                   UpdateGiveawayStatusEvent(

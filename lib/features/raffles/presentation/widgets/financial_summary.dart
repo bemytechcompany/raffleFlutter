@@ -19,7 +19,7 @@ class FinancialSummary extends StatelessWidget {
         decimalDigits: 2,
         locale: 'es',
       );
-  
+
   NumberFormat get percentFormat => NumberFormat.decimalPercentPattern(
         decimalDigits: 1,
         locale: 'es',
@@ -80,13 +80,14 @@ class FinancialSummary extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFF383838),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Text(
-                  '${raffle.totalTickets} tickets',
+                  '${raffle.totalTickets} Tickets',
                   style: const TextStyle(
                     color: Colors.white60,
                     fontSize: 12,
@@ -95,32 +96,70 @@ class FinancialSummary extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _summaryBox('Cobrado', collected, percentSold, const Color(0xFF00E676)),
-              _summaryBox('Reservado', pending, percentReserved, const Color(0xFFFFD54F)),
-              _summaryBox('Pendiente', remaining, percentAvailable, const Color(0xFF9E9E9E)),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _buildProgressBar(percentSold, percentReserved, percentAvailable),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
+              // ignore: prefer_const_constructors
               Text(
-                'Progreso: ${percentFormat.format(percentSold + percentReserved)}',
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                'Meta De Ventas: ',
+                style: const TextStyle(
+                  color: Colors.white60,
+                  fontSize: 14,
+                ),
               ),
               Text(
-                'Total: ${currencyFormat.format(total)}',
+                currencyFormat.format(total),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
                   fontSize: 14,
                 ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _summaryBox(
+                  'Cobrado', collected, percentSold, const Color(0xFF00E676)),
+              _summaryBox('Reservado', pending, percentReserved,
+                  const Color(0xFFFFD54F)),
+              _summaryBox('Pendiente', remaining, percentAvailable,
+                  const Color(0xFF9E9E9E)),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(
+                child: _buildProgressBar(
+                    percentSold, percentReserved, percentAvailable),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  percentFormat.format(percentSold + percentReserved),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total ventas: ${currencyFormat.format(collected + pending)}',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
               ),
             ],
           ),
@@ -197,7 +236,8 @@ class FinancialSummary extends StatelessWidget {
         children: [
           _progressSegment(percentSold, const Color(0xFF00E676)),
           _progressSegment(percentReserved, const Color(0xFFFFD54F)),
-          _progressSegment(percentAvailable, const Color(0xFF9E9E9E).withAlpha(77)),
+          _progressSegment(
+              percentAvailable, const Color(0xFF9E9E9E).withAlpha(77)),
         ],
       ),
     );
@@ -207,7 +247,8 @@ class FinancialSummary extends StatelessWidget {
     if (percent <= 0) return const SizedBox.shrink();
 
     return Expanded(
-      flex: (percent * 1000).round(), // Multiplicamos por 1000 para mejor precisión
+      flex: (percent * 1000)
+          .round(), // Multiplicamos por 1000 para mejor precisión
       child: Container(
         decoration: BoxDecoration(
           color: color,

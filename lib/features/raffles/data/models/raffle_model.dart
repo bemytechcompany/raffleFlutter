@@ -14,6 +14,9 @@ class RaffleModel extends Raffle {
     required DateTime date,
     String? imagePath,
     List<Ticket>? tickets,
+    required String gameType,
+    required int digitCount,
+    String? winningNumber,
   }) : super(
           id: id,
           name: name,
@@ -26,6 +29,9 @@ class RaffleModel extends Raffle {
           date: date,
           imagePath: imagePath,
           tickets: tickets,
+          gameType: gameType,
+          digitCount: digitCount,
+          winningNumber: winningNumber,
         );
 
   factory RaffleModel.fromMap(Map<String, dynamic> map) {
@@ -40,6 +46,9 @@ class RaffleModel extends Raffle {
       updatedAt: DateTime.parse(map['updated_at']),
       date: DateTime.parse(map['date']),
       imagePath: map['image_path'],
+      gameType: map['game_type'] ?? 'app',
+      digitCount: map['digit_count'] ?? 2,
+      winningNumber: map['winning_number'],
     );
   }
 
@@ -55,6 +64,9 @@ class RaffleModel extends Raffle {
       'updated_at': updatedAt.toIso8601String(),
       'date': date.toIso8601String(),
       'image_path': imagePath,
+      'game_type': gameType,
+      'digit_count': digitCount,
+      'winning_number': winningNumber,
     };
   }
 
@@ -71,6 +83,9 @@ class RaffleModel extends Raffle {
       date: raffle.date,
       imagePath: raffle.imagePath,
       tickets: raffle.tickets,
+      gameType: raffle.gameType,
+      digitCount: raffle.digitCount,
+      winningNumber: raffle.winningNumber,
     );
   }
 
@@ -87,6 +102,9 @@ class RaffleModel extends Raffle {
       date: date,
       imagePath: imagePath,
       tickets: tickets,
+      gameType: gameType,
+      digitCount: digitCount,
+      winningNumber: winningNumber,
     );
   }
 }

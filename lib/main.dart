@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:raffle/features/raffles/data/datasources/raffle_local_datasource.dart';
 import 'package:raffle/features/raffles/data/datasources/ticket_dao.dart';
@@ -16,6 +17,7 @@ import 'package:raffle/features/giveaways/data/datasources/participant_local_dat
 import 'features/giveaways/domain/use_cases/giveaway_use_cases.dart';
 import 'features/giveaways/domain/use_cases/participant_usecases.dart';
 import 'layout/main_layout.dart';
+import 'core/theme/app_theme.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
@@ -45,6 +47,27 @@ void main() {
   );
 }
 
+// Crear un widget global para manejar el teclado
+class GlobalKeyboardDismissWrapper extends StatelessWidget {
+  final Widget child;
+
+  const GlobalKeyboardDismissWrapper({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        // Cerrar teclado en iOS y Android
+        FocusScope.of(context).unfocus();
+        // Forzar cierre específico para iOS
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+      },
+      child: child,
+    );
+  }
+}
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -53,7 +76,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Raffle App',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
+      theme: AppTheme.darkTheme,
       locale: const Locale('es'), // Fuerza español
       supportedLocales: const [
         Locale('es'), // Solo español en este caso
@@ -63,6 +86,10 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
+      // Agregar el wrapper global aquí
+      builder: (context, child) {
+        return GlobalKeyboardDismissWrapper(child: child ?? Container());
+      },
       home: const MainLayout(),
     );
   }

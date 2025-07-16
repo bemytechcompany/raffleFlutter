@@ -13,6 +13,9 @@ class RaffleDao {
       price: raffle.price,
       totalTickets: raffle.totalTickets,
       date: raffle.date,
+      imagePath: raffle.imagePath,
+      gameType: raffle.gameType,
+      digitCount: raffle.digitCount,
     );
   }
 

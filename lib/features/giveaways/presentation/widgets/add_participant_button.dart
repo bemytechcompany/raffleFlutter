@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/participant_bloc.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class AddParticipantButton extends StatelessWidget {
   final int giveawayId;
@@ -19,6 +20,11 @@ class AddParticipantButton extends StatelessWidget {
       },
       icon: const Icon(Icons.person_add),
       label: const Text('Add Participant'),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.buttonGreenBackground,
+        foregroundColor: AppColors.buttonGreenForeground,
+        side: BorderSide(color: AppColors.buttonGreenBorder),
+      ),
     );
   }
 }
@@ -74,6 +80,11 @@ class _AddParticipantDialogState extends State<AddParticipantDialog> {
               Navigator.pop(context);
             }
           },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.buttonGreenBackground,
+            foregroundColor: AppColors.buttonGreenForeground,
+            side: BorderSide(color: AppColors.buttonGreenBorder),
+          ),
           child: const Text('Add'),
         ),
       ],

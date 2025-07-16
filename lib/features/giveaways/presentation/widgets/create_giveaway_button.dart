@@ -8,8 +8,8 @@ class CreateGiveawayButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton.extended(
-      foregroundColor: Colors.black,
-      backgroundColor: AppColors.primary,
+      foregroundColor: AppColors.buttonGreenForeground,
+      backgroundColor: AppColors.buttonGreenBackground,
       onPressed: () {
         Navigator.push(
           context,

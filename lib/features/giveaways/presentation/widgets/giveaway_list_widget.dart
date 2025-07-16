@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/giveaway.dart';
 import '../pages/giveaway_details_page.dart';
+import '../../../../core/theme/app_colors.dart';
 
 class GiveawayListWidget extends StatelessWidget {
   final List<Giveaway> giveaways;
@@ -49,7 +50,7 @@ class GiveawayListWidget extends StatelessWidget {
   Color _getStatusColor(String status) {
     switch (status) {
       case 'completed':
-        return Colors.green;
+        return AppColors.giveawayCompleted;
       case 'cancelled':
         return Colors.red;
       case 'pending':

@@ -12,6 +12,9 @@ class Raffle {
   final DateTime date;
   final String? imagePath;
   final List<Ticket>? tickets;
+  final String gameType; // 'lottery' o 'app'
+  final int digitCount; // 2, 3 o 4 dígitos
+  final String? winningNumber;
 
   Raffle({
     this.id,
@@ -25,6 +28,9 @@ class Raffle {
     required this.date,
     this.imagePath,
     this.tickets,
+    required this.gameType,
+    required this.digitCount,
+    this.winningNumber,
   });
 
   Raffle copyWith({
@@ -39,6 +45,9 @@ class Raffle {
     DateTime? date,
     String? imagePath,
     List<Ticket>? tickets,
+    String? gameType,
+    int? digitCount,
+    String? winningNumber,
   }) {
     return Raffle(
       id: id ?? this.id,
@@ -52,6 +61,9 @@ class Raffle {
       date: date ?? this.date,
       imagePath: imagePath ?? this.imagePath,
       tickets: tickets ?? this.tickets,
+      gameType: gameType ?? this.gameType,
+      digitCount: digitCount ?? this.digitCount,
+      winningNumber: winningNumber ?? this.winningNumber,
     );
   }
 }

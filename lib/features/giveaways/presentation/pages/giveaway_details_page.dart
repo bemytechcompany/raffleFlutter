@@ -47,7 +47,7 @@ class GiveawayDetailsPage extends StatelessWidget {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('🏆 ¡Ganador seleccionado exitosamente!'),
-                backgroundColor: Colors.green,
+                backgroundColor: AppColors.buttonGreenBorder,
               ),
             );
           }
@@ -114,6 +114,11 @@ class GiveawayDetailsPage extends StatelessWidget {
                       },
                       icon: const Icon(Icons.casino),
                       label: const Text('Sortear Ganador'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.buttonGreenBackground,
+                        foregroundColor: AppColors.buttonGreenForeground,
+                        side: BorderSide(color: AppColors.buttonGreenBorder),
+                      ),
                     ),
                   ),
                 ],
@@ -274,8 +279,8 @@ class GiveawayDetailsPage extends StatelessWidget {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('✅ Participante agregado exitosamente'),
-                    backgroundColor: Colors.green,
+                                                    content: const Text('✅ Participante agregado exitosamente'),
+                                backgroundColor: AppColors.buttonGreenBorder,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -287,8 +292,9 @@ class GiveawayDetailsPage extends StatelessWidget {
             icon: const Icon(Icons.check),
             label: const Text('Agregar'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.greenAccent.shade400,
-              foregroundColor: Colors.black,
+              backgroundColor: AppColors.buttonGreenBackground,
+              foregroundColor: AppColors.buttonGreenForeground,
+              side: BorderSide(color: AppColors.buttonGreenBorder),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),

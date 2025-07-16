@@ -36,6 +36,11 @@ class PreselectParticipantsButton extends StatelessWidget {
                 onPreselect(count);
               }
             },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.buttonGreenBackground,
+              foregroundColor: AppColors.buttonGreenForeground,
+              side: BorderSide(color: AppColors.buttonGreenBorder),
+            ),
             child: const Text('Preseleccionar'),
           ),
         ],
@@ -50,8 +55,9 @@ class PreselectParticipantsButton extends StatelessWidget {
       icon: const Icon(Icons.how_to_reg),
       label: const Text('Preseleccionar'),
       style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.black,
+        backgroundColor: AppColors.buttonGreenBackground,
+        foregroundColor: AppColors.buttonGreenForeground,
+        side: BorderSide(color: AppColors.buttonGreenBorder),
       ),
     );
   }

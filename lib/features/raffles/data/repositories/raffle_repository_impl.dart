@@ -74,12 +74,32 @@ class RaffleRepositoryImpl implements RaffleRepository {
 
   @override
   Future<void> deleteRaffleAndTickets(int raffleId) async {
-    await ticketDao.deleteTicketsByRaffle(raffleId);
-    await raffleLocalDatasource.deleteRaffleById(raffleId);
+    await raffleLocalDatasource.deleteRaffle(raffleId);
+  }
+
+  @override
+  Future<void> updateRaffle(Raffle raffle) async {
+    if (raffle.id == null) {
+      throw Exception('Cannot update raffle without id');
+    }
+    
+    await raffleLocalDatasource.updateRaffle(
+      raffleId: raffle.id!,
+      name: raffle.name,
+      lotteryNumber: raffle.lotteryNumber,
+      price: raffle.price,
+      date: raffle.date,
+      imagePath: raffle.imagePath,
+    );
   }
 
   @override
   Future<Map<String, dynamic>?> getRaffleWithTickets(int raffleId) async {
     return await raffleLocalDatasource.getRaffleWithTickets(raffleId);
+  }
+
+  @override
+  Future<void> setWinningNumberAndFinishRaffle(int raffleId, String winningNumber) async {
+    await raffleLocalDatasource.setWinningNumberAndFinishRaffle(raffleId, winningNumber);
   }
 }

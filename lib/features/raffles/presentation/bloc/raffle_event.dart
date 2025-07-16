@@ -26,6 +26,8 @@ class CreateRaffle extends RaffleEvent {
   final int totalTickets;
   final DateTime drawDate;
   final String? imagePath;
+  final String gameType;
+  final int digitCount;
 
   const CreateRaffle({
     required this.name,
@@ -34,11 +36,21 @@ class CreateRaffle extends RaffleEvent {
     required this.totalTickets,
     required this.drawDate,
     this.imagePath,
+    required this.gameType,
+    required this.digitCount,
   });
 
   @override
-  List<Object?> get props =>
-      [name, lotteryNumber, price, totalTickets, imagePath];
+  List<Object?> get props => [
+        name,
+        lotteryNumber,
+        price,
+        totalTickets,
+        drawDate,
+        imagePath,
+        gameType,
+        digitCount,
+      ];
 }
 
 class UpdateTicketEvent extends RaffleEvent {
@@ -61,4 +73,32 @@ class UpdateRaffleStatusEvent extends RaffleEvent {
 
   @override
   List<Object?> get props => [raffleId, newStatus];
+}
+
+class UpdateRaffle extends RaffleEvent {
+  final int raffleId;
+  final String name;
+  final String lotteryNumber;
+  final double price;
+  final DateTime drawDate;
+  final String? imagePath;
+
+  const UpdateRaffle({
+    required this.raffleId,
+    required this.name,
+    required this.lotteryNumber,
+    required this.price,
+    required this.drawDate,
+    this.imagePath,
+  });
+
+  @override
+  List<Object?> get props => [
+        raffleId,
+        name,
+        lotteryNumber,
+        price,
+        drawDate,
+        imagePath,
+      ];
 }

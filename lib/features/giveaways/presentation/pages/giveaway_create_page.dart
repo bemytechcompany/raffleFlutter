@@ -94,8 +94,9 @@ class _GiveawayCreatePageState extends State<GiveawayCreatePage> {
                           ? 'Seleccionar fecha'
                           : '${_drawDate!.toLocal()}'.split(' ')[0]),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.black87,
+                        backgroundColor: AppColors.buttonGreenBackground,
+                        foregroundColor: AppColors.buttonGreenForeground,
+                        side: BorderSide(color: AppColors.buttonGreenBorder),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(
