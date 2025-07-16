@@ -82,11 +82,6 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
-# Instalamos sólo las dependencias de producción.
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/package-lock.json* ./
-RUN npm ci --omit=dev --ignore-scripts --include-workspace-root
-
 # Exponemos el puerto por defecto
 EXPOSE 3000
 
