@@ -4,6 +4,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { Download, Smartphone, Star, Users, TrendingUp, Apple } from 'lucide-react'
 import { AnimatedButton } from '../ui/AnimatedButton'
+import PhoneMockup3D from './PhoneMockup3D'
 
 const DownloadSection = () => {
   const stats = [
@@ -169,13 +170,13 @@ const DownloadSection = () => {
           </motion.a>
         </motion.div>
 
-        {/* Sección de características móviles */}
+        {/* Sección de características móviles con mockup 3D */}
         <motion.div
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.6 }}
           viewport={{ once: true }}
-          className="relative"
+          className="relative relative min-h-[800px] lg:min-h-[900px]"
         >
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-white/2 rounded-3xl backdrop-blur-sm border border-white/10" />
 
@@ -189,20 +190,20 @@ const DownloadSection = () => {
                     <Smartphone size={28} className="text-white" />
                   </div>
                   <h3 className="text-3xl md:text-4xl font-bold text-white mb-4">
-                    Optimizada para Móviles
+                    Experiencia Visual Inmersiva
                   </h3>
                   <p className="text-lg text-gray-300 leading-relaxed">
-                    Interfaz diseñada específicamente para dispositivos móviles.
-                    Navegación intuitiva, controles táctiles optimizados y experiencia fluida.
+                    Explora cada pantalla de la aplicación con nuestro innovador visor 3D.
+                    Navegación interactiva que te permite ver todas las funcionalidades en acción.
                   </p>
                 </div>
 
                 <div className="space-y-4">
                   {[
-                    'Interfaz adaptativa para todos los tamaños de pantalla',
-                    'Gestos táctiles optimizados para máxima usabilidad',
-                    'Rendimiento excepcional en dispositivos de gama baja',
-                    'Modo offline completo sin dependencia de internet'
+                    'Visualización interactiva en 3D de todas las pantallas',
+                    'Navegación fluida entre capturas de pantalla reales',
+                    'Controles intuitivos con reproducción automática',
+                    'Efectos visuales inmersivos y experiencia premium'
                   ].map((feature, index) => (
                     <motion.div
                       key={index}
@@ -223,39 +224,9 @@ const DownloadSection = () => {
                 </div>
               </div>
 
-              {/* Mockup del teléfono */}
-              <div className="relative">
-                <div className="relative mx-auto w-80 h-160">
-                  {/* Teléfono */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 rounded-[3rem] border-4 border-gray-700 shadow-2xl">
-                    {/* Pantalla */}
-                    <div className="absolute inset-4 bg-gradient-to-br from-black to-gray-900 rounded-[2rem] overflow-hidden">
-                      {/* Contenido simulado */}
-                      <div className="p-6 h-full flex flex-col">
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="w-8 h-8 bg-gradient-to-r from-raffle-green to-raffle-green-light rounded-lg" />
-                          <div className="text-white font-bold text-lg">{process.env.NEXT_PUBLIC_NAME_APP}</div>
-                          <div className="w-8 h-8 bg-gray-700 rounded-lg" />
-                        </div>
-
-                        <div className="space-y-4 flex-1">
-                          <div className="h-20 bg-gradient-to-r from-raffle-green/20 to-raffle-green-light/20 rounded-xl border border-raffle-green/30" />
-                          <div className="h-16 bg-white/5 rounded-xl" />
-                          <div className="h-16 bg-white/5 rounded-xl" />
-                          <div className="h-16 bg-white/5 rounded-xl" />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 mt-4">
-                          <div className="h-8 bg-raffle-green/20 rounded-lg" />
-                          <div className="h-8 bg-raffle-green/20 rounded-lg" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Efectos de brillo */}
-                  <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-raffle-green/10 to-transparent rounded-[3rem] animate-pulse" />
-                </div>
+              {/* Mockup 3D del teléfono */}
+              <div className="relative flex items-center justify-center min-h-[650px]">
+                <PhoneMockup3D />
               </div>
             </div>
           </div>

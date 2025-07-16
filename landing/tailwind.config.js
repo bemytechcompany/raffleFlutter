@@ -87,7 +87,45 @@ module.exports = {
         'cyber': ['Orbitron', 'monospace'],
         'modern': ['Inter', 'sans-serif'],
       },
+      // Clases para efectos 3D
+      perspective: {
+        '1000': '1000px',
+        '1500': '1500px',
+        '2000': '2000px',
+      },
+      transformStyle: {
+        'preserve-3d': 'preserve-3d',
+      },
+      backfaceVisibility: {
+        'hidden': 'hidden',
+        'visible': 'visible',
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    // Plugin para utilidades CSS 3D
+    function ({ addUtilities }) {
+      const newUtilities = {
+        '.perspective-1000': {
+          perspective: '1000px',
+        },
+        '.perspective-1500': {
+          perspective: '1500px',
+        },
+        '.perspective-2000': {
+          perspective: '2000px',
+        },
+        '.preserve-3d': {
+          transformStyle: 'preserve-3d',
+        },
+        '.backface-hidden': {
+          backfaceVisibility: 'hidden',
+        },
+        '.backface-visible': {
+          backfaceVisibility: 'visible',
+        },
+      }
+      addUtilities(newUtilities)
+    },
+  ],
 } 
