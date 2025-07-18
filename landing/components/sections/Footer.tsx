@@ -78,6 +78,12 @@ const Footer = () => {
                   La aplicación más avanzada para gestionar rifas y sorteos.
                   Diseñada con tecnología de vanguardia para profesionales que buscan excelencia.
                 </p>
+                <p className="text-gray-300 leading-relaxed mb-6">
+                  <span className="text-raffle-green">Email:</span> {process.env.NEXT_PUBLIC_EMAIL}
+                </p>
+                <p className="text-gray-300 leading-relaxed mb-6">
+                  <span className="text-raffle-green">Teléfono:</span> {process.env.NEXT_PUBLIC_PHONE_NUMBER}
+                </p>
 
                 {/* Redes sociales */}
                 <div className="flex gap-4">

@@ -141,7 +141,7 @@ const PhoneMockup3D = () => {
   return (
     <div 
       ref={containerRef}
-      className="relative w-full max-w-6xl mx-auto h-[650px] flex items-center justify-center perspective-1000 overflow-hidden"
+      className="relative w-full max-w-6xl mx-auto h-[1000px] perspective-1000 overflow-hidden"
       style={{
         transform: `rotateX(${mousePosition.y * 2}deg) rotateY(${mousePosition.x * 2}deg)`,
         transition: 'transform 0.15s ease-out'
@@ -172,23 +172,66 @@ const PhoneMockup3D = () => {
         />
       </div>
 
-      {/* Contenedor principal 3D */}
-      <div 
-        className="relative w-full h-full flex items-center justify-center"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        {/* Esferas flotantes de características */}
-        {showFeatureOrbs && <FeatureOrbs />}
-        
-        {/* Carousel 3D mejorado */}
+      {/* Layout organizado en 3 secciones */}
+      <div className="relative w-full h-full flex flex-col">
+        {/* Sección 1: Información de la captura actual - Arriba derecha */}
+        <div className="absolute top-10 right-6 z-20">
+          <motion.div
+            key={currentIndex}
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="text-center max-w-sm"
+          >
+            <div className="bg-black/40 backdrop-blur-sm rounded-xl px-5 py-3 border border-white/10 shadow-xl">
+              <div className="flex items-center justify-center gap-2 mb-1">
+                <div className="w-1.5 h-1.5 bg-raffle-green rounded-full animate-pulse" />
+                <p className="text-white font-bold text-base">
+                  {screenshots[currentIndex].title}
+                </p>
+                <div className="w-1.5 h-1.5 bg-raffle-green rounded-full animate-pulse" />
+              </div>
+              <p className="text-raffle-green text-xs mb-2 leading-relaxed">
+                {screenshots[currentIndex].description}
+              </p>
+              <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400">
+                <span>{currentIndex + 1}/{screenshots.length}</span>
+                <span>•</span>
+                <span>{isAutoPlaying ? 'Auto' : 'Manual'}</span>
+                {isRotating && (
+                  <>
+                    <span>•</span>
+                    <span className="text-raffle-green">Rotando</span>
+                  </>
+                )}
+                {showFeatureOrbs && (
+                  <>
+                    <span>•</span>
+                    <span className="text-raffle-green">Características</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Sección 2: Contenedor del teléfono - Centro */}
         <div 
-          className="relative w-80 h-80 preserve-3d z-10"
-          style={{
-            transform: `rotateY(${isRotating ? rotateX : 0}deg)`,
-            transition: 'transform 0.5s ease-out'
-          }}
+          className="flex-1 flex items-center justify-center px-4 "
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
+          {/* Esferas flotantes de características */}
+          {showFeatureOrbs && <FeatureOrbs />}
+          
+          {/* Carousel 3D mejorado */}
+          <div 
+            className="relative w-80 h-80 preserve-3d z-10"
+            style={{
+              transform: `rotateY(${isRotating ? rotateX : 0}deg)`,
+              transition: 'transform 0.5s ease-out'
+            }}
+          >
           {getVisibleIndices().map((imageIndex, position) => {
             const isCenter = position === 2
             const distance = position - 2
@@ -335,133 +378,100 @@ const PhoneMockup3D = () => {
             )
           })}
         </div>
-
-        {/* Controles mejorados */}
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex items-center gap-3">
-          {/* Botón anterior */}
-          <motion.button
-            onClick={prevSlide}
-            className="p-2.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 hover:bg-raffle-green/20 transition-all duration-300 group"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ChevronLeft size={18} className="text-white group-hover:text-raffle-green transition-colors" />
-          </motion.button>
-
-          {/* Indicadores mejorados */}
-          <div className="flex gap-1.5 bg-black/30 backdrop-blur-sm rounded-full px-3 py-2 border border-white/10">
-            {screenshots.map((_, index) => (
-              <motion.button
-                key={index}
-                onClick={() => goToSlide(index)}
-                className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-                  index === currentIndex
-                    ? 'bg-raffle-green scale-125 shadow-lg shadow-raffle-green/50'
-                    : 'bg-white/30 hover:bg-white/50'
-                }`}
-                whileHover={{ scale: 1.5 }}
-                whileTap={{ scale: 0.8 }}
-              />
-            ))}
-          </div>
-
-          {/* Botón de play/pause */}
-          <motion.button
-            onClick={() => setIsAutoPlaying(!isAutoPlaying)}
-            className="p-2.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 hover:bg-raffle-green/20 transition-all duration-300 group"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            {isAutoPlaying ? (
-              <Pause size={14} className="text-white group-hover:text-raffle-green transition-colors" />
-            ) : (
-              <Play size={14} className="text-white group-hover:text-raffle-green transition-colors" />
-            )}
-          </motion.button>
-
-          {/* Botón de rotación */}
-          <motion.button
-            onClick={toggleRotation}
-            className={`p-2.5 backdrop-blur-sm rounded-full border transition-all duration-300 group ${
-              isRotating 
-                ? 'bg-raffle-green/20 border-raffle-green/50' 
-                : 'bg-white/10 border-white/20 hover:bg-raffle-green/20'
-            }`}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <RotateCcw size={14} className={`transition-colors ${
-              isRotating ? 'text-raffle-green' : 'text-white group-hover:text-raffle-green'
-            }`} />
-          </motion.button>
-
-          {/* Botón de mostrar/ocultar esferas */}
-          <motion.button
-            onClick={toggleFeatureOrbs}
-            className={`p-2.5 backdrop-blur-sm rounded-full border transition-all duration-300 group ${
-              showFeatureOrbs 
-                ? 'bg-raffle-green/20 border-raffle-green/50' 
-                : 'bg-white/10 border-white/20 hover:bg-raffle-green/20'
-            }`}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            {showFeatureOrbs ? (
-              <Eye size={14} className="text-raffle-green" />
-            ) : (
-              <EyeOff size={14} className="text-white group-hover:text-raffle-green transition-colors" />
-            )}
-          </motion.button>
-
-          {/* Botón siguiente */}
-          <motion.button
-            onClick={nextSlide}
-            className="p-2.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 hover:bg-raffle-green/20 transition-all duration-300 group"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-          >
-            <ChevronRight size={18} className="text-white group-hover:text-raffle-green transition-colors" />
-          </motion.button>
         </div>
 
-        {/* Información de la captura actual mejorada */}
-        <motion.div
-          key={currentIndex}
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="absolute top-6 left-1/2 transform -translate-x-1/2 text-center max-w-sm"
-        >
-          <div className="bg-black/40 backdrop-blur-sm rounded-xl px-5 py-3 border border-white/10 shadow-xl">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <div className="w-1.5 h-1.5 bg-raffle-green rounded-full animate-pulse" />
-              <p className="text-white font-bold text-base">
-                {screenshots[currentIndex].title}
-              </p>
-              <div className="w-1.5 h-1.5 bg-raffle-green rounded-full animate-pulse" />
+        {/* Sección 3: Controles - Abajo con margen reducido */}
+        <div className="relative pb-6 pt-4">
+          <div className="flex flex-col items-center gap-3">
+            {/* Indicadores mejorados */}
+            <div className="flex gap-1.5 bg-black/30 backdrop-blur-sm rounded-full px-3 py-2 border border-white/10">
+              {screenshots.map((_, index) => (
+                <motion.button
+                  key={index}
+                  onClick={() => goToSlide(index)}
+                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                    index === currentIndex
+                      ? 'bg-raffle-green scale-125 shadow-lg shadow-raffle-green/50'
+                      : 'bg-white/30 hover:bg-white/50'
+                  }`}
+                  whileHover={{ scale: 1.5 }}
+                  whileTap={{ scale: 0.8 }}
+                />
+              ))}
             </div>
-            <p className="text-raffle-green text-xs mb-2 leading-relaxed">
-              {screenshots[currentIndex].description}
-            </p>
-            <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400">
-              <span>{currentIndex + 1}/{screenshots.length}</span>
-              <span>•</span>
-              <span>{isAutoPlaying ? 'Auto' : 'Manual'}</span>
-              {isRotating && (
-                <>
-                  <span>•</span>
-                  <span className="text-raffle-green">Rotando</span>
-                </>
-              )}
-              {showFeatureOrbs && (
-                <>
-                  <span>•</span>
-                  <span className="text-raffle-green">Características</span>
-                </>
-              )}
+
+            {/* Botones de control */}
+            <div className="flex items-center gap-3">
+              {/* Botón anterior */}
+              <motion.button
+                onClick={prevSlide}
+                className="p-2.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 hover:bg-raffle-green/20 transition-all duration-300 group"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <ChevronLeft size={18} className="text-white group-hover:text-raffle-green transition-colors" />
+              </motion.button>
+
+              {/* Botón de play/pause */}
+              <motion.button
+                onClick={() => setIsAutoPlaying(!isAutoPlaying)}
+                className="p-2.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 hover:bg-raffle-green/20 transition-all duration-300 group"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                {isAutoPlaying ? (
+                  <Pause size={14} className="text-white group-hover:text-raffle-green transition-colors" />
+                ) : (
+                  <Play size={14} className="text-white group-hover:text-raffle-green transition-colors" />
+                )}
+              </motion.button>
+
+              {/* Botón de rotación */}
+              <motion.button
+                onClick={toggleRotation}
+                className={`p-2.5 backdrop-blur-sm rounded-full border transition-all duration-300 group ${
+                  isRotating 
+                    ? 'bg-raffle-green/20 border-raffle-green/50' 
+                    : 'bg-white/10 border-white/20 hover:bg-raffle-green/20'
+                }`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <RotateCcw size={14} className={`transition-colors ${
+                  isRotating ? 'text-raffle-green' : 'text-white group-hover:text-raffle-green'
+                }`} />
+              </motion.button>
+
+              {/* Botón de mostrar/ocultar esferas */}
+              <motion.button
+                onClick={toggleFeatureOrbs}
+                className={`p-2.5 backdrop-blur-sm rounded-full border transition-all duration-300 group ${
+                  showFeatureOrbs 
+                    ? 'bg-raffle-green/20 border-raffle-green/50' 
+                    : 'bg-white/10 border-white/20 hover:bg-raffle-green/20'
+                }`}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                {showFeatureOrbs ? (
+                  <Eye size={14} className="text-raffle-green" />
+                ) : (
+                  <EyeOff size={14} className="text-white group-hover:text-raffle-green transition-colors" />
+                )}
+              </motion.button>
+
+              {/* Botón siguiente */}
+              <motion.button
+                onClick={nextSlide}
+                className="p-2.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 hover:bg-raffle-green/20 transition-all duration-300 group"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                <ChevronRight size={18} className="text-white group-hover:text-raffle-green transition-colors" />
+              </motion.button>
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
 
       {/* Efectos de fondo adicionales */}
