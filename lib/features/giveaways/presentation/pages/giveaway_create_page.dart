@@ -96,7 +96,7 @@ class _GiveawayCreatePageState extends State<GiveawayCreatePage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.buttonGreenBackground,
                         foregroundColor: AppColors.buttonGreenForeground,
-                        side: BorderSide(color: AppColors.buttonGreenBorder),
+                        side: const BorderSide(color: AppColors.buttonGreenBorder),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -144,7 +144,7 @@ class _GiveawayCreatePageState extends State<GiveawayCreatePage> {
           labelText: label,
           prefixIcon: Icon(icon),
           filled: true,
-          fillColor: Colors.greenAccent.shade100.withOpacity(0.3),
+          fillColor: Colors.greenAccent.shade100.withValues(alpha: 0.3),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none),

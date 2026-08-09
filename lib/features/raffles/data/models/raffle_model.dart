@@ -1,73 +1,44 @@
+import 'package:raffle/core/db/app_database.dart';
 import 'package:raffle/features/raffles/domain/entities/raffle.dart';
 import 'package:raffle/features/raffles/domain/entities/ticket.dart';
 
+/// Traducción entre la tabla `raffles` y la entidad [Raffle].
 class RaffleModel extends Raffle {
-  RaffleModel({
-    required int? id,
-    required String name,
-    required String lotteryNumber,
-    required double price,
-    required int totalTickets,
-    required String status,
-    required DateTime createdAt,
-    required DateTime updatedAt,
-    required DateTime date,
-    String? imagePath,
-    List<Ticket>? tickets,
-    required String gameType,
-    required int digitCount,
-    String? winningNumber,
-  }) : super(
-          id: id,
-          name: name,
-          lotteryNumber: lotteryNumber,
-          price: price,
-          totalTickets: totalTickets,
-          status: status,
-          createdAt: createdAt,
-          updatedAt: updatedAt,
-          date: date,
-          imagePath: imagePath,
-          tickets: tickets,
-          gameType: gameType,
-          digitCount: digitCount,
-          winningNumber: winningNumber,
-        );
+  const RaffleModel({
+    required super.id,
+    required super.name,
+    required super.lotteryNumber,
+    required super.priceMinor,
+    required super.totalTickets,
+    required super.status,
+    required super.createdAt,
+    required super.updatedAt,
+    required super.date,
+    super.imagePath,
+    super.tickets,
+    required super.gameType,
+    required super.digitCount,
+    super.winningNumber,
+    super.deletedAt,
+  });
 
   factory RaffleModel.fromMap(Map<String, dynamic> map) {
     return RaffleModel(
-      id: map['id'],
-      name: map['name'],
-      lotteryNumber: map['lottery_number'],
-      price: map['price'],
-      totalTickets: map['total_tickets'],
-      status: map['status'],
-      createdAt: DateTime.parse(map['created_at']),
-      updatedAt: DateTime.parse(map['updated_at']),
-      date: DateTime.parse(map['date']),
-      imagePath: map['image_path'],
-      gameType: map['game_type'] ?? 'app',
-      digitCount: map['digit_count'] ?? 2,
-      winningNumber: map['winning_number'],
+      id: map['id'] as int?,
+      name: map['name'] as String,
+      lotteryNumber: (map['lottery_number'] as String?) ?? '',
+      priceMinor: map['price_minor'] as int,
+      totalTickets: map['total_tickets'] as int,
+      status: map['status'] as String,
+      createdAt: parseDbDate(map['created_at'] as String),
+      updatedAt: parseDbDate(map['updated_at'] as String),
+      date: parseDbDate(map['draw_date'] as String),
+      imagePath: map['image_path'] as String?,
+      gameType: map['game_type'] as String,
+      digitCount: map['digit_count'] as int,
+      winningNumber: map['winning_number'] as String?,
+      deletedAt: parseDbDateOrNull(map['deleted_at']),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'lottery_number': lotteryNumber,
-      'price': price,
-      'total_tickets': totalTickets,
-      'status': status,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
-      'date': date.toIso8601String(),
-      'image_path': imagePath,
-      'game_type': gameType,
-      'digit_count': digitCount,
-      'winning_number': winningNumber,
-    };
   }
 
   factory RaffleModel.fromEntity(Raffle raffle) {
@@ -75,7 +46,7 @@ class RaffleModel extends Raffle {
       id: raffle.id,
       name: raffle.name,
       lotteryNumber: raffle.lotteryNumber,
-      price: raffle.price,
+      priceMinor: raffle.priceMinor,
       totalTickets: raffle.totalTickets,
       status: raffle.status,
       createdAt: raffle.createdAt,
@@ -86,25 +57,46 @@ class RaffleModel extends Raffle {
       gameType: raffle.gameType,
       digitCount: raffle.digitCount,
       winningNumber: raffle.winningNumber,
+      deletedAt: raffle.deletedAt,
     );
   }
 
-  Raffle toEntity() {
+  /// Columnas para `insert`/`update`. Sin `id`: lo asigna SQLite.
+  Map<String, dynamic> toColumns() {
+    return {
+      'name': name,
+      'lottery_number': lotteryNumber,
+      'price_minor': priceMinor,
+      'total_tickets': totalTickets,
+      'status': status,
+      'game_type': gameType,
+      'digit_count': digitCount,
+      'winning_number': winningNumber,
+      'image_path': imagePath,
+      'draw_date': date.toDbString(),
+      'created_at': createdAt.toDbString(),
+      'updated_at': updatedAt.toDbString(),
+      'deleted_at': deletedAt?.toDbString(),
+    };
+  }
+
+  Raffle toEntity({List<Ticket>? tickets}) {
     return Raffle(
       id: id,
       name: name,
       lotteryNumber: lotteryNumber,
-      price: price,
+      priceMinor: priceMinor,
       totalTickets: totalTickets,
       status: status,
       createdAt: createdAt,
       updatedAt: updatedAt,
       date: date,
       imagePath: imagePath,
-      tickets: tickets,
+      tickets: tickets ?? this.tickets,
       gameType: gameType,
       digitCount: digitCount,
       winningNumber: winningNumber,
+      deletedAt: deletedAt,
     );
   }
 }

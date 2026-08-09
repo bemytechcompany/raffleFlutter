@@ -1,9 +1,9 @@
 import 'dart:ui' as ui;
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:raffle/core/money/money.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -57,11 +57,13 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
           // Timeout de seguridad para iOS
           if (Platform.isIOS) {
             await Future.any([
-              Share.shareXFiles([XFile(file.path)], text: '¡Gracias por participar!'),
+              SharePlus.instance.share(ShareParams(
+                  files: [XFile(file.path)], text: '¡Gracias por participar!')),
               Future.delayed(const Duration(seconds: 10)), // Timeout de 10 segundos
             ]);
           } else {
-            await Share.shareXFiles([XFile(file.path)], text: '¡Gracias por participar!');
+            await SharePlus.instance.share(ShareParams(
+                  files: [XFile(file.path)], text: '¡Gracias por participar!'));
           }
           
           if (kDebugMode) {
@@ -120,11 +122,6 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
     final ticket = widget.ticket;
     final raffle = widget.raffle;
     final dateFormat = DateFormat('dd/MM/yyyy');
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-      locale: 'es',
-    );
 
     return Column(
       children: [
@@ -204,7 +201,7 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
                             style: const TextStyle(color: Colors.white54),
                           ),
                           Text(
-                            'Precio: ${currencyFormat.format(raffle.price)}',
+                            'Precio: ${Money.format(raffle.priceMinor)}',
                             style: const TextStyle(color: Colors.white54),
                           ),
                         ],
@@ -269,7 +266,7 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.buttonGreenBackground,
                     foregroundColor: AppColors.buttonGreenForeground,
-                    side: BorderSide(color: AppColors.buttonGreenBorder),
+                    side: const BorderSide(color: AppColors.buttonGreenBorder),
                   ),
                 ),
               ),
@@ -282,7 +279,7 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.buttonGreenBackground,
                     foregroundColor: AppColors.buttonGreenForeground,
-                    side: BorderSide(color: AppColors.buttonGreenBorder),
+                    side: const BorderSide(color: AppColors.buttonGreenBorder),
                   ),
                 ),
               ),

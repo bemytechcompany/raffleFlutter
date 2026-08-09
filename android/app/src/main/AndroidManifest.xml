@@ -1,10 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <!-- Permisos heredados de Android 12 y anteriores. Desde Android 13 no
+         conceden nada y Play los cuestiona en la revisión, así que se acotan
+         con maxSdkVersion. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Android 13+: acceso a la galería para elegir la imagen de la rifa. -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="raffle"
+        android:label="Raffle"
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">

@@ -5,6 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:raffle/features/raffles/presentation/bloc/raffle_bloc.dart';
 import 'package:raffle/features/raffles/presentation/bloc/raffle_event.dart';
+import 'package:raffle/features/raffles/presentation/bloc/raffle_state.dart';
+import 'package:raffle/core/money/money.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/keyboard_dismissible.dart';
 import 'dart:math';
@@ -17,6 +19,9 @@ class RaffleCreatePage extends StatefulWidget {
 }
 
 class _RaffleCreatePageState extends State<RaffleCreatePage> {
+  /// Tope de boletos: coincide con la lotería de 4 dígitos (0000-9999).
+  static const int _maxTickets = 10000;
+
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _lotteryNumberController = TextEditingController();
@@ -27,6 +32,9 @@ class _RaffleCreatePageState extends State<RaffleCreatePage> {
   File? _selectedImage;
   String _gameType = 'app';
   int _digitCount = 2;
+
+  /// Hay una creación en curso a la espera de respuesta del bloc.
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -46,10 +54,62 @@ class _RaffleCreatePageState extends State<RaffleCreatePage> {
     }
   }
 
+  void _submit() {
+    if (_drawDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor selecciona una fecha')),
+      );
+      return;
+    }
+    if (!_formKey.currentState!.validate()) return;
+
+    // El validador ya garantizó que el precio se puede convertir.
+    final priceMinor = Money.tryParse(_priceController.text)!;
+
+    setState(() => _submitting = true);
+
+    context.read<RaffleBloc>().add(
+          CreateRaffle(
+            name: _nameController.text.trim(),
+            lotteryNumber: _lotteryNumberController.text.trim(),
+            priceMinor: priceMinor,
+            totalTickets: int.parse(_totalTicketsController.text),
+            drawDate: _drawDate!,
+            imagePath: _selectedImage?.path,
+            gameType: _gameType,
+            digitCount: _digitCount,
+          ),
+        );
+  }
+
+  /// Cierra la pantalla solo cuando el bloc confirma que la rifa se guardó, y
+  /// muestra el error si algo falló. Antes se hacía `pop` inmediato y los
+  /// fallos pasaban desapercibidos.
+  void _onRaffleStateChanged(BuildContext context, RaffleState state) {
+    if (!_submitting) return;
+
+    if (state is RaffleError) {
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No se pudo crear la rifa: ${state.message}'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+
+    if (state is RaffleLoaded) {
+      Navigator.pop(context);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return KeyboardDismissible(
-      child: Scaffold(
+    return BlocListener<RaffleBloc, RaffleState>(
+      listener: _onRaffleStateChanged,
+      child: KeyboardDismissible(
+        child: Scaffold(
         appBar: AppBar(
           title: const Text(
             'Crear Nueva Rifa',
@@ -149,8 +209,12 @@ class _RaffleCreatePageState extends State<RaffleCreatePage> {
                             if (value == null || value.isEmpty) {
                               return 'Por favor ingresa un precio';
                             }
-                            if (double.tryParse(value) == null) {
+                            final priceMinor = Money.tryParse(value);
+                            if (priceMinor == null) {
                               return 'Por favor ingresa un número válido';
+                            }
+                            if (priceMinor <= 0) {
+                              return 'El precio debe ser mayor que 0';
                             }
                             return null;
                           },
@@ -181,7 +245,7 @@ class _RaffleCreatePageState extends State<RaffleCreatePage> {
                         ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          value: _gameType,
+                          initialValue: _gameType,
                           decoration: InputDecoration(
                             labelText: 'Tipo de Sorteo',
                             prefixIcon: const Icon(Icons.casino),
@@ -212,7 +276,7 @@ class _RaffleCreatePageState extends State<RaffleCreatePage> {
                         const SizedBox(height: 16),
                         if (_gameType == 'lottery') ...[
                           DropdownButtonFormField<int>(
-                            value: _digitCount,
+                            initialValue: _digitCount,
                             decoration: InputDecoration(
                               labelText: 'Número de Dígitos',
                               prefixIcon: const Icon(Icons.format_list_numbered),
@@ -274,8 +338,15 @@ class _RaffleCreatePageState extends State<RaffleCreatePage> {
                               if (value == null || value.isEmpty) {
                                 return 'Por favor ingresa el total de boletos';
                               }
-                              if (int.tryParse(value) == null) {
+                              final total = int.tryParse(value);
+                              if (total == null) {
                                 return 'Por favor ingresa un número válido';
+                              }
+                              if (total <= 0) {
+                                return 'Debe haber al menos 1 boleto';
+                              }
+                              if (total > _maxTickets) {
+                                return 'Máximo $_maxTickets boletos';
                               }
                               return null;
                             },
@@ -317,48 +388,26 @@ class _RaffleCreatePageState extends State<RaffleCreatePage> {
 
                 // Botón de crear
                 ElevatedButton(
-                  onPressed: () {
-                    if (_formKey.currentState!.validate() && _drawDate != null) {
-                      context.read<RaffleBloc>().add(
-                            CreateRaffle(
-                              name: _nameController.text,
-                              lotteryNumber: _lotteryNumberController.text,
-                              price: double.parse(_priceController.text),
-                              totalTickets:
-                                  int.parse(_totalTicketsController.text),
-                              drawDate: _drawDate!,
-                              imagePath: _selectedImage?.path,
-                              gameType: _gameType,
-                              digitCount: _digitCount,
-                            ),
-                          );
-                      Navigator.pop(context);
-                    } else if (_drawDate == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Por favor selecciona una fecha'),
-                        ),
-                      );
-                    }
-                  },
+                  onPressed: _submitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.buttonGreenBackground,
                     foregroundColor: AppColors.buttonGreenForeground,
-                    side: BorderSide(color: AppColors.buttonGreenBorder),
+                    side: const BorderSide(color: AppColors.buttonGreenBorder),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
                   ),
-                  child: const Text(
-                    'Crear Rifa',
-                    style: TextStyle(fontSize: 16),
+                  child: Text(
+                    _submitting ? 'Creando…' : 'Crear Rifa',
+                    style: const TextStyle(fontSize: 16),
                   ),
                 ),
                 const SizedBox(height: 16),
               ],
             ),
           ),
+        ),
         ),
       ),
     );

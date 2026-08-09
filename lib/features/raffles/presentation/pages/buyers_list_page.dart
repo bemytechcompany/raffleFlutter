@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:raffle/core/money/money.dart';
 import 'package:raffle/core/theme/app_colors.dart';
-import 'package:raffle/core/theme/button_styles.dart';
 import 'package:raffle/features/raffles/domain/entities/raffle.dart';
 import 'package:raffle/features/raffles/domain/entities/ticket.dart';
 import 'package:pdf/pdf.dart';
@@ -313,7 +313,7 @@ class _BuyersListPageState extends State<BuyersListPage> {
                   decoration: pw.BoxDecoration(
                     border: pw.Border.all(color: PdfColors.black),
                   ),
-                  child: pw.Table.fromTextArray(
+                  child: pw.TableHelper.fromTextArray(
                     border: pw.TableBorder.all(color: PdfColors.black),
                     headerDecoration: const pw.BoxDecoration(
                       color: PdfColors.grey300,
@@ -373,7 +373,7 @@ class _BuyersListPageState extends State<BuyersListPage> {
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
                         pw.Text(
-                          'Valor total: \$${(widget.raffle.price * _filteredTickets.where((t) => t.status == 'sold').length).toStringAsFixed(2)}',
+                          'Valor total: ${Money.format(widget.raffle.priceMinor * _filteredTickets.where((t) => t.status == 'sold').length)}',
                           style: pw.TextStyle(
                             fontSize: 14,
                             fontWeight: pw.FontWeight.bold,
@@ -392,9 +392,11 @@ class _BuyersListPageState extends State<BuyersListPage> {
       final filePath = await _getExportPath('pdf');
       final file = File(filePath);
       await file.writeAsBytes(await pdf.save());
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'Lista de Compradores - ${widget.raffle.name}',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Lista de Compradores - ${widget.raffle.name}',
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -459,9 +461,11 @@ class _BuyersListPageState extends State<BuyersListPage> {
       final filePath = await _getExportPath('xlsx');
       final file = File(filePath);
       await file.writeAsBytes(excel.encode()!);
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        subject: 'Lista de Compradores - ${widget.raffle.name}',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Lista de Compradores - ${widget.raffle.name}',
+        ),
       );
     } catch (e) {
       if (mounted) {
@@ -514,18 +518,18 @@ class _BuyersListPageState extends State<BuyersListPage> {
                     Expanded(
                       flex: 2,
                       child: TextField(
-                        style: TextStyle(color: AppColors.text),
+                        style: const TextStyle(color: AppColors.text),
                         decoration: InputDecoration(
                           hintText: _getSearchHint(),
-                          hintStyle: TextStyle(color: AppColors.textHint),
-                          prefixIcon: Icon(Icons.search, color: AppColors.text),
-                          border: OutlineInputBorder(
+                          hintStyle: const TextStyle(color: AppColors.textHint),
+                          prefixIcon: const Icon(Icons.search, color: AppColors.text),
+                          border: const OutlineInputBorder(
                             borderSide: BorderSide(color: AppColors.border),
                           ),
-                          enabledBorder: OutlineInputBorder(
+                          enabledBorder: const OutlineInputBorder(
                             borderSide: BorderSide(color: AppColors.border),
                           ),
-                          focusedBorder: OutlineInputBorder(
+                          focusedBorder: const OutlineInputBorder(
                             borderSide: BorderSide(color: AppColors.primary),
                           ),
                           filled: true,
@@ -562,7 +566,7 @@ class _BuyersListPageState extends State<BuyersListPage> {
                           child: DropdownButton<String>(
                             value: _searchFilter,
                             isExpanded: true,
-                            style: TextStyle(color: AppColors.text),
+                            style: const TextStyle(color: AppColors.text),
                             dropdownColor: AppColors.backgroundModal,
                             onChanged: (String? newValue) {
                               setState(() {
@@ -570,7 +574,7 @@ class _BuyersListPageState extends State<BuyersListPage> {
                                 _filterTickets();
                               });
                             },
-                            items: [
+                            items: const [
                               DropdownMenuItem(
                                 value: 'all',
                                 child: Text('Todo', style: TextStyle(color: AppColors.text)),
@@ -601,7 +605,7 @@ class _BuyersListPageState extends State<BuyersListPage> {
                     foregroundColor: AppColors.text,
                     selectedBackgroundColor: AppColors.primary,
                     selectedForegroundColor: AppColors.text, // Texto blanco cuando está seleccionado
-                    side: BorderSide(color: AppColors.border),
+                    side: const BorderSide(color: AppColors.border),
                   ),
                   segments: const [
                     ButtonSegment(
@@ -642,7 +646,7 @@ class _BuyersListPageState extends State<BuyersListPage> {
                     foregroundColor: AppColors.text,
                     child: Text(
                       ticket.number.toString(),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         color: AppColors.text, // Números en blanco
                       ),
@@ -650,19 +654,19 @@ class _BuyersListPageState extends State<BuyersListPage> {
                   ),
                   title: Text(
                     ticket.buyerName ?? '',
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.text,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
                   subtitle: Text(
                     ticket.buyerContact ?? '',
-                    style: TextStyle(color: AppColors.textSecondary),
+                    style: const TextStyle(color: AppColors.textSecondary),
                   ),
                   trailing: Chip(
                     label: Text(
                       _getStatusInSpanish(ticket.status),
-                      style: TextStyle(
+                      style: const TextStyle(
                         color: AppColors.text, // Texto blanco para ambos estados
                         fontWeight: FontWeight.bold,
                       ),

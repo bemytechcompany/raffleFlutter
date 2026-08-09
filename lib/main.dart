@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:raffle/features/raffles/data/datasources/raffle_local_datasource.dart';
-import 'package:raffle/features/raffles/data/datasources/ticket_dao.dart';
 import 'package:raffle/features/raffles/data/repositories/raffle_repository_impl.dart';
 import 'package:raffle/features/raffles/domain/repositories/raffle_repository.dart';
 import 'package:raffle/features/raffles/presentation/bloc/raffle_bloc.dart';
 import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details_bloc.dart';
+import 'package:raffle/features/raffles/presentation/bloc/trash/trash_bloc.dart';
 import 'package:raffle/features/giveaways/presentation/bloc/giveaway_bloc.dart';
 import 'package:raffle/features/giveaways/presentation/bloc/participant_bloc.dart';
 import 'package:raffle/features/giveaways/data/repositories/giveaway_repository_impl.dart';
@@ -21,9 +21,10 @@ import 'core/theme/app_theme.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   final RaffleRepository raffleRepository = RaffleRepositoryImpl(
     raffleLocalDatasource: RaffleLocalDatasource.instance,
-    ticketDao: TicketDao.instance,
   );
 
   final giveawayRepository =
@@ -39,6 +40,7 @@ void main() {
       providers: [
         BlocProvider(create: (_) => RaffleBloc(raffleRepository)),
         BlocProvider(create: (_) => RaffleDetailsBloc(raffleRepository)),
+        BlocProvider(create: (_) => TrashBloc(raffleRepository)),
         BlocProvider(create: (_) => GiveawayBloc(giveawayUseCases)),
         BlocProvider(create: (_) => ParticipantBloc(participantUseCases)),
       ],

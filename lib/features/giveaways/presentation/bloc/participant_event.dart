@@ -86,12 +86,3 @@ class DrawWinnerEvent extends ParticipantEvent {
   @override
   List<Object?> get props => [giveawayId];
 }
-
-class WinnerSelected extends ParticipantState {
-  final Participant winner;
-
-  const WinnerSelected(this.winner);
-
-  @override
-  List<Object?> get props => [winner];
-}

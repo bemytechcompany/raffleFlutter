@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:raffle/core/theme/app_colors.dart';
 import 'package:raffle/features/raffles/domain/entities/ticket.dart';
 import 'package:raffle/features/raffles/domain/entities/raffle.dart';
 import 'package:raffle/core/widgets/keyboard_dismissible.dart';
@@ -193,7 +192,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
             end: Alignment.bottomRight,
           ) : isSelected ? LinearGradient(
             colors: [
-              color.withOpacity(0.8), 
+              color.withValues(alpha: 0.8), 
               color,
               _getStatusSecondaryColor(value),
             ],
@@ -210,19 +209,19 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
           borderRadius: BorderRadius.circular(20),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: color.withOpacity(0.4),
+              color: color.withValues(alpha: 0.4),
               blurRadius: 12,
               offset: const Offset(0, 6),
               spreadRadius: 2,
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ] : [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -241,7 +240,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                   Container(
                     padding: EdgeInsets.all(_getSpacing(context, 6)),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(isSelected ? 0.2 : 0.1),
+                      color: Colors.white.withValues(alpha: isSelected ? 0.2 : 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -302,7 +301,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
             gradient: LinearGradient(
               colors: [
                 Theme.of(context).colorScheme.surface,
-                Theme.of(context).colorScheme.surface.withOpacity(0.95),
+                Theme.of(context).colorScheme.surface.withValues(alpha: 0.95),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -310,13 +309,13 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 30,
                 offset: const Offset(0, 15),
                 spreadRadius: 5,
               ),
               BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 5),
               ),
@@ -336,15 +335,15 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-                            Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
+                            Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                            Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                           width: 1,
                         ),
                       ),
@@ -360,7 +359,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                     gradient: LinearGradient(
                                       colors: [
                                         Theme.of(context).colorScheme.primary,
-                                        Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -368,7 +367,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                                         blurRadius: 8,
                                         offset: const Offset(0, 4),
                                       ),
@@ -390,7 +389,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                         style: TextStyle(
                                           fontSize: _getFontSize(context, 14),
                                           fontWeight: FontWeight.w500,
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                         ),
                                       ),
                                       Text(
@@ -411,7 +410,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                           ),
                           Container(
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface.withOpacity(0.8),
+                              color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.8),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: IconButton(
@@ -433,15 +432,15 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              _getStatusColor(widget.ticket.status).withOpacity(0.1),
-                              _getStatusColor(widget.ticket.status).withOpacity(0.05),
+                              _getStatusColor(widget.ticket.status).withValues(alpha: 0.1),
+                              _getStatusColor(widget.ticket.status).withValues(alpha: 0.05),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: _getStatusColor(widget.ticket.status).withOpacity(0.3),
+                            color: _getStatusColor(widget.ticket.status).withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -457,7 +456,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: _getStatusColor(widget.ticket.status).withOpacity(0.3),
+                                        color: _getStatusColor(widget.ticket.status).withValues(alpha: 0.3),
                                         blurRadius: 6,
                                         offset: const Offset(0, 3),
                                       ),
@@ -481,7 +480,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                         style: TextStyle(
                                           fontSize: _getFontSize(context, 12),
                                           fontWeight: FontWeight.w500,
-                                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                         ),
                                       ),
                                       Text(
@@ -505,12 +504,12 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                 color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                                   width: 1,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black.withValues(alpha: 0.05),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
                                   ),
@@ -524,7 +523,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                       Container(
                                         padding: EdgeInsets.all(_getSpacing(context, 6)),
                                         decoration: BoxDecoration(
-                                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Icon(
@@ -550,8 +549,8 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: [
-                                          Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                                          Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.1),
+                                          Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                                          Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
                                         ],
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
@@ -586,7 +585,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                                 widget.ticket.buyerContact ?? '',
                                                 style: TextStyle(
                                                   fontSize: _getFontSize(context, 14),
-                                                  color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                                  color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                                                 ),
                                                 softWrap: true,
                                                 maxLines: 2,
@@ -611,10 +610,10 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                           height: _getButtonHeight(context),
                           margin: EdgeInsets.only(bottom: _getSpacing(context, 16)),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(
+                            gradient: const LinearGradient(
                               colors: [
-                                const Color(0xFFE53E3E),
-                                const Color(0xFFFF6B6B),
+                                Color(0xFFE53E3E),
+                                Color(0xFFFF6B6B),
                               ],
                               begin: Alignment.centerLeft,
                               end: Alignment.centerRight,
@@ -622,7 +621,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFFE53E3E).withOpacity(0.4),
+                                color: const Color(0xFFE53E3E).withValues(alpha: 0.4),
                                 blurRadius: 12,
                                 offset: const Offset(0, 6),
                               ),
@@ -641,7 +640,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                     Container(
                                       padding: EdgeInsets.all(_getSpacing(context, 6)),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.2),
+                                        color: Colors.white.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(
@@ -671,13 +670,13 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                             width: 2,
                           ),
                           gradient: LinearGradient(
                             colors: [
                               Theme.of(context).colorScheme.surface,
-                              Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.5),
+                              Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -731,15 +730,15 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2),
-                              Theme.of(context).colorScheme.primaryContainer.withOpacity(0.05),
+                              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
+                              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.05),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                             width: 1,
                           ),
                         ),
@@ -754,7 +753,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                     gradient: LinearGradient(
                                       colors: [
                                         Theme.of(context).colorScheme.primary,
-                                        Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                        Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                                       ],
                                     ),
                                     borderRadius: BorderRadius.circular(12),
@@ -784,10 +783,10 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                 padding: EdgeInsets.all(_getSpacing(context, 12)),
                                 margin: EdgeInsets.only(bottom: _getSpacing(context, 16)),
                                 decoration: BoxDecoration(
-                                  color: Colors.orange.withOpacity(0.2),
+                                  color: Colors.orange.withValues(alpha: 0.2),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: Colors.orange.withOpacity(0.5),
+                                    color: Colors.orange.withValues(alpha: 0.5),
                                     width: 1,
                                   ),
                                 ),
@@ -830,15 +829,15 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                              Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.1),
+                              Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                              Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                             width: 1,
                           ),
                         ),
@@ -855,7 +854,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                       gradient: LinearGradient(
                                         colors: [
                                           Theme.of(context).colorScheme.secondary,
-                                          Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                                          Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
                                         ],
                                       ),
                                       borderRadius: BorderRadius.circular(12),
@@ -887,7 +886,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
+                                      color: Colors.black.withValues(alpha: 0.05),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -906,7 +905,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                       margin: EdgeInsets.all(_getSpacing(context, 8)),
                                       padding: EdgeInsets.all(_getSpacing(context, 6)),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(
@@ -948,7 +947,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                   borderRadius: BorderRadius.circular(16),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
+                                      color: Colors.black.withValues(alpha: 0.05),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -967,7 +966,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                       margin: EdgeInsets.all(_getSpacing(context, 8)),
                                       padding: EdgeInsets.all(_getSpacing(context, 6)),
                                       decoration: BoxDecoration(
-                                        color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                                        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Icon(
@@ -1024,13 +1023,13 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: _getStatusColor(_status).withOpacity(0.4),
+                            color: _getStatusColor(_status).withValues(alpha: 0.4),
                             blurRadius: 15,
                             offset: const Offset(0, 8),
                             spreadRadius: 2,
                           ),
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
+                            color: Colors.black.withValues(alpha: 0.1),
                             blurRadius: 4,
                             offset: const Offset(0, 2),
                           ),
@@ -1061,7 +1060,7 @@ class _TicketModalState extends State<TicketModal> with TickerProviderStateMixin
                                     padding: EdgeInsets.all(_getSpacing(context, 6)),
                                     margin: EdgeInsets.only(right: _getSpacing(context, 12)),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withOpacity(0.2),
+                                      color: Colors.white.withValues(alpha: 0.2),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(

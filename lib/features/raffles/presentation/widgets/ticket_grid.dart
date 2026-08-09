@@ -6,10 +6,14 @@ import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details
 import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details_event.dart';
 import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details_state.dart';
 import 'dart:math' as math;
+import 'package:raffle/core/pagination/paged.dart';
 import 'package:raffle/core/theme/app_colors.dart';
 
 class TicketGrid extends StatefulWidget {
-  final List<Ticket> tickets;
+  /// Página de boletos que se está mostrando. La trae el bloc con
+  /// `LIMIT/OFFSET`: el grid nunca tiene los diez mil boletos en memoria.
+  final Paged<Ticket> page;
+
   final Function(Ticket) onTap;
   final Raffle raffle;
   final bool showRandomButton;
@@ -17,7 +21,7 @@ class TicketGrid extends StatefulWidget {
 
   const TicketGrid({
     super.key,
-    required this.tickets,
+    required this.page,
     required this.onTap,
     required this.raffle,
     this.showRandomButton = false,
@@ -29,19 +33,15 @@ class TicketGrid extends StatefulWidget {
 }
 
 class _TicketGridState extends State<TicketGrid> {
-  static const int itemsPerPage = 100;
-  int _currentPage = 0;
+  int get itemsPerPage => widget.page.pageSize;
+  int get totalPages => widget.page.totalPages;
+  int get _page => widget.page.page;
+  List<Ticket> get currentPageTickets => widget.page.items;
 
-  int get totalPages => (widget.tickets.length / itemsPerPage).ceil();
-  List<Ticket> get currentPageTickets {
-    final start = _currentPage * itemsPerPage;
-    final end = math.min(start + itemsPerPage, widget.tickets.length);
-    return widget.tickets.sublist(start, end);
-  }
-
+  /// La paginación la lleva el bloc: aquí solo se avisa de la página pedida.
   void _onPageChanged(int page) {
-    setState(() => _currentPage = page);
-    widget.onPageChanged?.call(page);
+    if (totalPages == 0) return;
+    widget.onPageChanged?.call(page.clamp(0, totalPages - 1));
   }
 
   String _formatNumber(int number) {
@@ -54,13 +54,13 @@ class _TicketGridState extends State<TicketGrid> {
   Color _getTicketColor(String status) {
     switch (status) {
       case 'sold':
-        return AppColors.statusSold.withOpacity(0.3);
+        return AppColors.statusSold.withValues(alpha: 0.3);
       case 'reserved':
-        return AppColors.statusReserved.withOpacity(0.3);
+        return AppColors.statusReserved.withValues(alpha: 0.3);
       case 'available':
-        return AppColors.statusAvailable.withOpacity(0.3);
+        return AppColors.statusAvailable.withValues(alpha: 0.3);
       default:
-        return AppColors.textSecondary.withOpacity(0.3);
+        return AppColors.textSecondary.withValues(alpha: 0.3);
     }
   }
 
@@ -90,22 +90,28 @@ class _TicketGridState extends State<TicketGrid> {
     }
   }
 
-  void _selectRandomTicket(BuildContext context) {
-    final availableTickets =
-        widget.tickets.where((t) => t.status == 'available').toList();
-    if (availableTickets.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+  /// Sortea un boleto y pide confirmación antes de fijarlo como ganador.
+  ///
+  /// El sorteo lo hace la base entre todos los boletos disponibles de la rifa,
+  /// no entre los de la página cargada.
+  Future<void> _selectRandomTicket(BuildContext context) async {
+    final bloc = context.read<RaffleDetailsBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final selectedTicket = await bloc.pickRandomAvailableTicket();
+    if (!mounted) return;
+
+    if (selectedTicket == null) {
+      messenger.showSnackBar(
         const SnackBar(content: Text('No hay números disponibles')),
       );
       return;
     }
 
-    final random = math.Random();
-    final selectedTicket =
-        availableTickets[random.nextInt(availableTickets.length)];
+    if (!context.mounted) return;
 
     // Mostrar diálogo de confirmación
-    showDialog(
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar Número Ganador'),
@@ -198,6 +204,11 @@ class _TicketGridState extends State<TicketGrid> {
   }
 
   Widget _buildPagination() {
+    // Con una sola página no hay nada que paginar, y con cero un
+    // `DropdownButton` cuyo `value` no está entre sus items dispara una
+    // assertion de Flutter.
+    if (totalPages <= 1) return const SizedBox.shrink();
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Column(
@@ -211,7 +222,7 @@ class _TicketGridState extends State<TicketGrid> {
                 children: [
                   // Indicador de página actual
                   Text(
-                    'Página ${_currentPage + 1} de $totalPages',
+                    'Página ${_page + 1} de $totalPages',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -225,7 +236,7 @@ class _TicketGridState extends State<TicketGrid> {
                       if (!isSmallScreen)
                         IconButton(
                           onPressed:
-                              _currentPage > 0 ? () => _onPageChanged(0) : null,
+                              _page > 0 ? () => _onPageChanged(0) : null,
                           icon: const Icon(Icons.first_page),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
@@ -234,8 +245,8 @@ class _TicketGridState extends State<TicketGrid> {
                           ),
                         ),
                       IconButton(
-                        onPressed: _currentPage > 0
-                            ? () => _onPageChanged(_currentPage - 1)
+                        onPressed: _page > 0
+                            ? () => _onPageChanged(_page - 1)
                             : null,
                         icon: const Icon(Icons.chevron_left),
                         padding: EdgeInsets.zero,
@@ -252,13 +263,13 @@ class _TicketGridState extends State<TicketGrid> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<int>(
-                            value: _currentPage,
+                            value: _page,
                             isDense: true,
                             isExpanded: true,
                             items: List.generate(totalPages, (index) {
                               final start = index * itemsPerPage + 1;
-                              final end = math.min((index + 1) * itemsPerPage,
-                                  widget.tickets.length);
+                              final end = math.min(
+                                  (index + 1) * itemsPerPage, widget.page.total);
                               return DropdownMenuItem(
                                 alignment: Alignment.center,
                                 value: index,
@@ -280,8 +291,8 @@ class _TicketGridState extends State<TicketGrid> {
                         ),
                       ),
                       IconButton(
-                        onPressed: _currentPage < totalPages - 1
-                            ? () => _onPageChanged(_currentPage + 1)
+                        onPressed: _page < totalPages - 1
+                            ? () => _onPageChanged(_page + 1)
                             : null,
                         icon: const Icon(Icons.chevron_right),
                         padding: EdgeInsets.zero,
@@ -292,7 +303,7 @@ class _TicketGridState extends State<TicketGrid> {
                       ),
                       if (!isSmallScreen)
                         IconButton(
-                          onPressed: _currentPage < totalPages - 1
+                          onPressed: _page < totalPages - 1
                               ? () => _onPageChanged(totalPages - 1)
                               : null,
                           icon: const Icon(Icons.last_page),
@@ -336,8 +347,6 @@ class _TicketGridState extends State<TicketGrid> {
           builder: (context, state) {
             final currentRaffle =
                 state is RaffleDetailsLoaded ? state.raffle : widget.raffle;
-            final currentTickets =
-                state is RaffleDetailsLoaded ? state.tickets : widget.tickets;
 
             // Ajustar el número de columnas según la cantidad de dígitos
             final crossAxisCount = currentRaffle.gameType == 'lottery'
@@ -377,7 +386,7 @@ class _TicketGridState extends State<TicketGrid> {
                       boxShadow: isWinner
                           ? [
                               BoxShadow(
-                                color: Colors.amber.shade200.withOpacity(0.5),
+                                color: Colors.amber.shade200.withValues(alpha: 0.5),
                                 blurRadius: 4,
                                 spreadRadius: 1,
                               ),

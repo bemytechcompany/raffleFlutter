@@ -38,6 +38,8 @@ class GiveawayUseCases {
     return repository.getGiveaway(id);
   }
 
+  /// Borra el sorteo. Sus participantes se van con él por la clave foránea
+  /// `ON DELETE CASCADE`, no hace falta borrarlos a mano.
   Future<void> deleteGiveaway(int id) {
     return repository.deleteGiveaway(id);
   }

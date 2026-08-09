@@ -76,7 +76,7 @@ class GiveawayDetailsPage extends StatelessWidget {
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey.shade200, width: 0.5),
                     borderRadius: BorderRadius.circular(10),
-                    color: Colors.grey.shade50.withOpacity(0.05),
+                    color: Colors.grey.shade50.withValues(alpha: 0.05),
                   ),
                   child: ParticipantListWidget(giveawayId: giveaway.id!),
                 ),
@@ -117,7 +117,7 @@ class GiveawayDetailsPage extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.buttonGreenBackground,
                         foregroundColor: AppColors.buttonGreenForeground,
-                        side: BorderSide(color: AppColors.buttonGreenBorder),
+                        side: const BorderSide(color: AppColors.buttonGreenBorder),
                       ),
                     ),
                   ),
@@ -222,7 +222,7 @@ class GiveawayDetailsPage extends StatelessWidget {
                   labelText: 'Nombre',
                   prefixIcon: const Icon(Icons.person),
                   filled: true,
-                  fillColor: Colors.greenAccent.shade100.withOpacity(0.3),
+                  fillColor: Colors.greenAccent.shade100.withValues(alpha: 0.3),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -236,7 +236,7 @@ class GiveawayDetailsPage extends StatelessWidget {
                   labelText: 'Contacto',
                   prefixIcon: const Icon(Icons.phone),
                   filled: true,
-                  fillColor: Colors.greenAccent.shade100.withOpacity(0.3),
+                  fillColor: Colors.greenAccent.shade100.withValues(alpha: 0.3),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -294,7 +294,7 @@ class GiveawayDetailsPage extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.buttonGreenBackground,
               foregroundColor: AppColors.buttonGreenForeground,
-              side: BorderSide(color: AppColors.buttonGreenBorder),
+              side: const BorderSide(color: AppColors.buttonGreenBorder),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
               ),

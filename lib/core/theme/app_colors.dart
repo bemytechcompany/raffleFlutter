@@ -76,12 +76,12 @@ class AppColors {
   static const Color borderFocus = primary;
   
   // Sombras
-  static Color shadowLight = Colors.black.withOpacity(0.1);
-  static Color shadowMedium = Colors.black.withOpacity(0.3);
-  static Color shadowHeavy = Colors.black.withOpacity(0.5);
+  static Color shadowLight = Colors.black.withValues(alpha: 0.1);
+  static Color shadowMedium = Colors.black.withValues(alpha: 0.3);
+  static Color shadowHeavy = Colors.black.withValues(alpha: 0.5);
   
   // Colores con opacidad
-  static Color primaryWithOpacity(double opacity) => primary.withOpacity(opacity);
-  static Color blackWithOpacity(double opacity) => Colors.black.withOpacity(opacity);
-  static Color whiteWithOpacity(double opacity) => Colors.white.withOpacity(opacity);
+  static Color primaryWithOpacity(double opacity) => primary.withValues(alpha: opacity);
+  static Color blackWithOpacity(double opacity) => Colors.black.withValues(alpha: opacity);
+  static Color whiteWithOpacity(double opacity) => Colors.white.withValues(alpha: opacity);
 }
