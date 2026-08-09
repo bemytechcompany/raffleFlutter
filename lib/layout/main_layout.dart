@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:raffle/features/giveaways/presentation/pages/giveaway_list_page.dart';
 import 'package:raffle/features/raffles/presentation/bloc/trash/trash_bloc.dart';
+import '../features/raffles/presentation/pages/about_page.dart';
 import '../features/raffles/presentation/pages/raffle_list_page.dart';
 import '../features/raffles/presentation/pages/trash_page.dart';
 
@@ -67,7 +68,21 @@ class _MainLayoutState extends State<MainLayout> {
     final destination = _destinations[_currentIndex];
 
     return Scaffold(
-      appBar: AppBar(title: Text(destination.title)),
+      appBar: AppBar(
+        title: Text(destination.title),
+        actions: [
+          // En la barra principal y no dentro de ajustes: la política de
+          // privacidad tiene que ser alcanzable desde cualquier pestaña para
+          // pasar la revisión de las tiendas.
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'Acerca de',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AboutPage()),
+            ),
+          ),
+        ],
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: [for (final d in _destinations) d.page],

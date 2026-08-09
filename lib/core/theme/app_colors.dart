@@ -48,7 +48,16 @@ class AppColors {
   
   // Botones unificados - Verde Activo
   static const Color buttonGreenBackground = Colors.greenAccent; // Verde activo
-  static const Color buttonGreenForeground = Colors.white; // Texto blanco
+
+  /// Texto sobre el verde de los botones.
+  ///
+  /// Negro, no blanco: `greenAccent` es un verde muy claro y el blanco encima
+  /// se queda en 1,4:1 de contraste, muy por debajo del 4,5:1 que pide WCAG
+  /// —el texto casi desaparecía—. En negro sube a ~15:1. Además el
+  /// `ColorScheme` ya declaraba `onPrimary: Colors.black`, así que media app
+  /// pintaba negro y la otra media blanco sobre el mismo verde.
+  static const Color buttonGreenForeground = Colors.black;
+
   static const Color buttonGreenBorder = Color(0xFF388E3C); // Verde más oscuro para borde
   
   // Gradientes comunes
