@@ -549,3 +549,121 @@ constraints):
 11. `flutter_bloc` 9 + `share_plus` 12 + `flutter_lints` 6, y migrar `withOpacity` → `withValues`.
 12. Extraer `use_cases` en `raffles` y quitar el acceso directo al datasource desde `RaffleDetailsBloc`.
 13. Tests: hoy son 0. Empezar por los datasources y la lógica financiera, que es donde están los bugs.
+
+---
+
+## 7. Revisión "Sortear ganador" (rifas + sorteos)
+
+> **Estado: todo lo de esta sección está aplicado.**
+> `flutter analyze` → *No issues found*; `flutter test` → **70 en verde**
+> (antes 51). Suites nuevas: `test/db/participant_local_datasource_test.dart`
+> y `test/widget/ticket_grid_draw_test.dart`.
+>
+> Dos matices sobre el diagnóstico original:
+>
+> - **Preseleccionados.** Apagar `is_preselected` al ganar rompía el sorteo:
+>   esa marca es lo que le dice a la ronda siguiente que hubo preselección, y
+>   sin ella repescaba a quien nunca entró (lo cazó un test). La base conserva
+>   la marca y el contador pasa a mostrar los *pendientes*, vía
+>   `Participant.isPendingPreselection`.
+> - **Defecto extra encontrado al escribir el test de widget.**
+>   `RaffleDetails.props` solo llevaba `raffle.id` y `raffle.updatedAt`, así
+>   que el repintado dependía de que la marca de tiempo cambiase. Ahora
+>   enumera también `status`, `winningNumber`, `name` e `imagePath`.
+>
+> Pendiente de decidir por producto: nada. El conjunto del sorteo de rifas
+> pasó a "vendidos primero, y si no hay ventas, todos".
+
+`flutter analyze` → **No issues found**. Todo lo de abajo era comportamiento, no
+compilación. Aplica igual en Android e iOS salvo donde se indique.
+
+### 🔴 Causa raíz de "no pasa nada visualmente"
+
+`ticket_grid.dart:141` y `:189` despachan el evento con
+`context.read<RaffleDetailsBloc>()` usando el **context del diálogo**.
+`showDialog` monta con `useRootNavigator: true`, así que ese context cuelga del
+Navigator raíz → `MaterialApp` → el `MultiBlocProvider` de `main.dart`, **no**
+del provider con ámbito de ruta de `raffle_list_page.dart:255`
+(`InheritedTheme.capture` no propaga `BlocProvider`).
+
+El evento llega al `RaffleDetailsBloc` **global** de `main.dart:42`, con
+`_raffleId == null` y estado `RaffleDetailsInitial`. En
+`raffle_details_bloc.dart:125`:
+
+```dart
+if (current is! RaffleDetailsLoaded || raffleId == null) return;  // salida silenciosa
+```
+
+Sin escritura en BD, sin error, sin estado nuevo. Coincide con el síntoma: el
+diálogo sí muestra el número (`pickRandomAvailableTicket` se llama desde
+`ticket_grid.dart:98`, con el context correcto), pero "Confirmar" no hace nada.
+Igual para "Reiniciar Sorteo".
+
+**Arreglo:** usar la variable `bloc` ya capturada antes de `showDialog` dentro
+del builder (y capturarla también en `_showWinningNumberDialog`); borrar el
+`RaffleDetailsBloc` duplicado de `main.dart:42` para que un fallo así lance
+`ProviderNotFoundException` en vez de fallar callado; que `_mutate` no salga con
+`return` mudo.
+
+### 🟠 "Reiniciar Sorteo" sigue roto aun con lo anterior arreglado
+
+`raffle_local_datasource.dart:332` + `ticket_grid.dart:185`
+
+- `setWinningNumberAndFinishRaffle(id, '')` limpia el número pero **deja
+  `status = 'expired'`**. La rifa queda bloqueada: `showRandomButton` exige
+  `status == 'active'` (`raffle_details_page.dart:265`).
+- El botón solo se pinta `if (widget.raffle.status != 'expired')` — y tras un
+  sorteo `app` el estado **es** `expired`: inalcanzable justo cuando hace falta.
+- Guarda `''` en vez de `NULL`.
+
+**Arreglo:** `resetDraw(raffleId)` que ponga `winning_number = NULL` y
+`status = 'active'` en la misma transacción.
+
+### 🟠 Bloqueo de venta/reserva — parcial
+
+`ticket_info_modal.dart:223`
+
+- Se bloquea por `status == 'expired'`, no por "hay ganador": una rifa
+  `lottery` con ganador fijado sigue vendiendo.
+- El estado `inactiva` no bloquea nada pese a lo que promete
+  `status_modal.dart:333`.
+- **Bug aparte, alto:** `status_modal.dart:59` escribe `'inactiva'`, pero el
+  `CHECK` es `IN ('active','inactive','expired')` (`app_database.dart:41`).
+  Elegir "Inactiva" lanza `DatabaseException`.
+
+**Arreglo:** `bool get isLocked => status != 'active' || winningNumber != null;`
+en `Raffle`; corregir `'inactiva'` → `'inactive'`.
+
+### 🟡 El sorteo excluye boletos vendidos
+
+`raffle_local_datasource.dart:213` sortea solo entre `status = 'available'`. En
+una rifa real el ganador debería salir de los vendidos, o de todos los números.
+Decisión de producto: confirmar antes de tocar.
+
+### Sorteos (giveaways)
+
+- 🔴 **Preseleccionados congelados.** `participant_local_datasource.dart:142`
+  marca `is_winner`/`award`/`updated_at` pero **nunca pone `is_preselected = 0`**.
+  `GiveawayStatsWidget` cuenta `p.isPreselected` → contador clavado (captura:
+  5 / 2 / 4). Arreglo: añadir `'is_preselected': 0` a ese `UPDATE`.
+- 🟠 **El estado nunca pasa a "Completado".** `drawWinner` no toca
+  `giveaways.status`; hoy solo se cambia a mano por el menú ⋮.
+- 🟠 **No existe "reiniciar sorteo"** para giveaways (las rifas sí lo tienen).
+- 🟠 **Efecto secundario en `build()`.** `giveaway_details_page.dart:20` despacha
+  `LoadParticipants` dentro de `build`: se redispara en cada rebuild → recargas
+  en bucle y parpadeo. Debe ser `StatefulWidget` + `initState`.
+- 🟠 **Blocs globales sin ámbito.** `ParticipantBloc`/`GiveawayBloc` son
+  singletons en `main.dart`; abrir el sorteo B muestra los datos de A hasta que
+  responde la consulta. Replicar el patrón por ruta de `raffle_list_page.dart:255`.
+- 🔴 **Issue #5 "Editar sorteos": no implementado.** No hay
+  `giveaway_edit_page.dart` ni `UpdateGiveawayEvent`; `GiveawayUseCases` solo
+  expone crear, cambiar estado, listar, obtener y borrar. Referencia:
+  `raffle_edit_page.dart`.
+
+### Menor
+
+- `ticket_modal.dart` nunca se instancia: código muerto.
+- `ticket_grid.dart:369` compara con `_formatNumber`, que lee `widget.raffle`
+  (posiblemente desactualizado) mientras el resto usa `currentRaffle` del estado.
+- El ganador solo se resalta si cae en la página visible; no hay "ir al ganador".
+- `giveaway_list_widget.dart:28`: textos en inglés en una app forzada a `es`.

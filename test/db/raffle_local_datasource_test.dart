@@ -360,33 +360,64 @@ void main() {
   });
 
   group('sorteo aleatorio', () {
-    test('elige entre todos los disponibles, no solo la primera página',
-        () async {
+    test('elige entre todos los boletos, no solo la primera página', () async {
       final raffleId = await datasource.insertRaffleWithTickets(
         buildRaffle(totalTickets: 300),
         buildTickets(300),
       );
 
-      // Se reserva todo menos un boleto muy avanzado, fuera de la primera
-      // página de cien: el sorteo tiene que encontrarlo igualmente.
+      // Se vende un único boleto muy avanzado, fuera de la primera página de
+      // cien: el sorteo tiene que encontrarlo igualmente.
       await db.update(
         'tickets',
-        {'status': 'reserved', 'buyer_name': 'Ana'},
-        where: 'raffle_id = ? AND number != ?',
+        {'status': 'sold', 'buyer_name': 'Ana'},
+        where: 'raffle_id = ? AND number = ?',
         whereArgs: [raffleId, 250],
       );
 
-      final picked = await datasource.pickRandomAvailableTicket(raffleId);
+      final picked = await datasource.pickWinningTicket(raffleId);
       expect(picked!['number'], 250);
     });
 
-    test('devuelve null si no queda ninguno disponible', () async {
+    test('el ganador sale de los vendidos, no de los libres', () async {
+      // Regresión: se sorteaba entre `available`, así que ganaba siempre un
+      // número que nadie había comprado.
       final raffleId = await datasource.insertRaffleWithTickets(
-        buildRaffle(totalTickets: 3),
-        buildTickets(3, status: 'sold'),
+        buildRaffle(totalTickets: 20),
+        buildTickets(20),
       );
 
-      expect(await datasource.pickRandomAvailableTicket(raffleId), isNull);
+      await db.update(
+        'tickets',
+        {'status': 'sold', 'buyer_name': 'Ana'},
+        where: 'raffle_id = ? AND number IN (3, 7)',
+        whereArgs: [raffleId],
+      );
+
+      for (var i = 0; i < 25; i++) {
+        final picked = await datasource.pickWinningTicket(raffleId);
+        expect(picked!['number'], anyOf(3, 7));
+      }
+    });
+
+    test('sin ventas todavía entra cualquier boleto', () async {
+      final raffleId = await datasource.insertRaffleWithTickets(
+        buildRaffle(totalTickets: 3),
+        buildTickets(3),
+      );
+
+      final picked = await datasource.pickWinningTicket(raffleId);
+      expect(picked, isNotNull);
+      expect(picked!['number'], anyOf(1, 2, 3));
+    });
+
+    test('devuelve null si la rifa no tiene boletos', () async {
+      final raffleId = await datasource.insertRaffleWithTickets(
+        buildRaffle(),
+        const [],
+      );
+
+      expect(await datasource.pickWinningTicket(raffleId), isNull);
     });
   });
 
@@ -445,6 +476,37 @@ void main() {
       final raffle = await datasource.getRaffleById(raffleId);
       expect(raffle!['winning_number'], '42');
       expect(raffle['status'], 'active');
+    });
+
+    test('reiniciar borra el ganador y reabre la rifa', () async {
+      // Regresión: el reinicio guardaba '' y dejaba el estado en `expired`,
+      // así que la rifa no se podía volver a sortear ni a vender.
+      final raffleId = await datasource.insertRaffleWithTickets(
+        buildRaffle(gameType: 'app'),
+        const [],
+      );
+      await datasource.setWinningNumberAndFinishRaffle(raffleId, '42');
+
+      await datasource.resetDraw(raffleId);
+
+      final raffle = await datasource.getRaffleById(raffleId);
+      expect(raffle!['winning_number'], isNull);
+      expect(raffle['status'], 'active');
+    });
+
+    test('fijar un número vacío equivale a reiniciar', () async {
+      final raffleId = await datasource.insertRaffleWithTickets(
+        buildRaffle(gameType: 'app'),
+        const [],
+      );
+      await datasource.setWinningNumberAndFinishRaffle(raffleId, '42');
+
+      await datasource.setWinningNumberAndFinishRaffle(raffleId, '');
+
+      final raffle = await datasource.getRaffleById(raffleId);
+      expect(raffle!['winning_number'], isNull);
+      expect(raffle['status'], 'active',
+          reason: 'un número vacío no puede dejar la rifa cerrada sin ganador');
     });
   });
 }

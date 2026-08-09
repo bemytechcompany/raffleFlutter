@@ -45,6 +45,20 @@ class Raffle {
 
   bool get isInTrash => deletedAt != null;
 
+  /// La rifa ya tiene número ganador.
+  ///
+  /// Se comprueba también que no sea cadena vacía porque el reinicio antiguo
+  /// guardaba `''` en vez de `NULL` y esas filas siguen en las bases ya
+  /// creadas.
+  bool get hasWinner => winningNumber != null && winningNumber!.isNotEmpty;
+
+  /// No se pueden vender ni reservar boletos.
+  ///
+  /// Manda el estado, pero un ganador ya sorteado cierra la rifa aunque el
+  /// estado siga en `active`: es el caso de las rifas de lotería, donde el
+  /// número se fija a mano y nadie cambia el estado después.
+  bool get isLocked => status != 'active' || hasWinner;
+
   /// Importe total si se vendieran todos los boletos, en unidades mínimas.
   int get goalMinor => priceMinor * totalTickets;
 

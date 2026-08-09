@@ -51,6 +51,16 @@ class ChangeRaffleStatus extends RaffleDetailsEvent {
   List<Object?> get props => [raffleId, newStatus];
 }
 
+/// Deshace el sorteo: borra el ganador y reabre la rifa.
+class ResetDraw extends RaffleDetailsEvent {
+  final int raffleId;
+
+  const ResetDraw(this.raffleId);
+
+  @override
+  List<Object?> get props => [raffleId];
+}
+
 class SetWinningNumber extends RaffleDetailsEvent {
   final int raffleId;
   final String winningNumber;

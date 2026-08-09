@@ -12,6 +12,7 @@ class GiveawayBloc extends Bloc<GiveawayEvent, GiveawayState> {
     on<LoadGiveaways>(_onLoadGiveaways);
     on<CreateGiveawayEvent>(_onCreateGiveaway);
     on<UpdateGiveawayStatusEvent>(_onUpdateGiveawayStatus);
+    on<UpdateGiveawayEvent>(_onUpdateGiveaway);
     on<DeleteGiveawayEvent>(_onDeleteGiveaway);
   }
 
@@ -53,6 +54,23 @@ class GiveawayBloc extends Bloc<GiveawayEvent, GiveawayState> {
       await useCases.updateGiveawayStatus(
         giveawayId: event.giveawayId,
         newStatus: event.newStatus,
+      );
+      add(LoadGiveaways());
+    } catch (e) {
+      emit(GiveawayError(e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateGiveaway(
+    UpdateGiveawayEvent event,
+    Emitter<GiveawayState> emit,
+  ) async {
+    try {
+      await useCases.updateGiveaway(
+        giveawayId: event.giveawayId,
+        name: event.name,
+        description: event.description,
+        drawDate: event.drawDate,
       );
       add(LoadGiveaways());
     } catch (e) {

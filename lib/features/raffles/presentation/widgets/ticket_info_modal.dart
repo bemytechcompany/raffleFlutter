@@ -220,8 +220,10 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
 
   Widget _buildStatusButton(String value, String label, IconData icon, Color color) {
     final isSelected = _status == value;
-    final isRaffleExpired = widget.raffle.status == 'expired';
-    final isDisabled = isRaffleExpired && (value == 'sold' || value == 'reserved');
+    // Se mira `isLocked`, no solo el estado: una rifa de lotería con número
+    // ganador ya fijado sigue en `active` y aun así no debe admitir ventas.
+    final isDisabled =
+        widget.raffle.isLocked && (value == 'sold' || value == 'reserved');
     
     return Padding(
       padding: EdgeInsets.only(bottom: _getSpacing(context, 12.0)),
@@ -383,8 +385,8 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                 ),
                 SizedBox(height: _getSpacing(context, 16)),
                 
-                // Mensaje informativo cuando la rifa está expirada
-                if (widget.raffle.status == 'expired') ...[
+                // Mensaje informativo cuando la rifa ya no admite ventas
+                if (widget.raffle.isLocked) ...[
                   Container(
                     padding: EdgeInsets.all(_getSpacing(context, 12)),
                     margin: EdgeInsets.only(bottom: _getSpacing(context, 16)),
@@ -406,7 +408,9 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                         SizedBox(width: _getSpacing(context, 12)),
                         Expanded(
                           child: Text(
-                            'Esta rifa ha finalizado. Solo se pueden liberar tickets, no vender ni reservar.',
+                            widget.raffle.hasWinner
+                                ? 'Esta rifa ya tiene número ganador. Solo se pueden liberar tickets, no vender ni reservar.'
+                                : 'Esta rifa no está activa. Solo se pueden liberar tickets, no vender ni reservar.',
                             style: TextStyle(
                               color: Colors.orange,
                               fontSize: _getFontSize(context, 13),

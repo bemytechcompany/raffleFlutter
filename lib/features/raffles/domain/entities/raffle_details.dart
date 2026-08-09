@@ -18,6 +18,21 @@ class RaffleDetails extends Equatable {
     required this.buyers,
   });
 
+  /// Se enumeran los campos que la pantalla pinta, no solo `updatedAt`.
+  ///
+  /// `Raffle` no es `Equatable`, así que la igualdad tenía que apoyarse en la
+  /// marca de tiempo: si dos lecturas la traían igual, el bloc daba el estado
+  /// por repetido y se saltaba la emisión, dejando la cabecera con el ganador
+  /// viejo. Ahora un cambio de estado o de ganador se nota por sí solo.
   @override
-  List<Object?> get props => [raffle.id, raffle.updatedAt, counts, buyers];
+  List<Object?> get props => [
+        raffle.id,
+        raffle.name,
+        raffle.status,
+        raffle.winningNumber,
+        raffle.imagePath,
+        raffle.updatedAt,
+        counts,
+        buyers,
+      ];
 }

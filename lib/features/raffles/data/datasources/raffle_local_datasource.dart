@@ -207,14 +207,26 @@ class RaffleLocalDatasource {
   /// Se sortea en la base y no en Dart: la pantalla solo tiene cargada una
   /// página de boletos, así que elegir en memoria sortearía entre cien de diez
   /// mil.
-  Future<Map<String, dynamic>?> pickRandomAvailableTicket(int raffleId) async {
+  Future<Map<String, dynamic>?> pickWinningTicket(int raffleId) async {
     final db = await _db;
-    final rows = await db.rawQuery(
-      "SELECT * FROM tickets WHERE raffle_id = ? AND status = 'available' "
+
+    // Si hay boletos vendidos el ganador sale de ellos: sortear entre los
+    // disponibles garantizaba que ganase un número que nadie compró, justo lo
+    // contrario de lo que hace una rifa.
+    final sold = await db.rawQuery(
+      "SELECT * FROM tickets WHERE raffle_id = ? AND status = 'sold' "
       'ORDER BY RANDOM() LIMIT 1',
       [raffleId],
     );
-    return rows.isEmpty ? null : rows.first;
+    if (sold.isNotEmpty) return sold.first;
+
+    // Sin ventas todavía entran todos, para poder probar el sorteo antes de
+    // vender nada.
+    final any = await db.rawQuery(
+      'SELECT * FROM tickets WHERE raffle_id = ? ORDER BY RANDOM() LIMIT 1',
+      [raffleId],
+    );
+    return any.isEmpty ? null : any.first;
   }
 
   /// Solo los boletos que tienen comprador, para la lista de compradores.
@@ -312,10 +324,15 @@ class RaffleLocalDatasource {
 
   /// Guarda el número ganador y, si la rifa se juega en la app, la da por
   /// terminada en la misma transacción.
+  ///
+  /// Para deshacerlo está [resetDraw]; pasar una cadena vacía aquí no reinicia
+  /// nada, solo dejaría la rifa cerrada y sin ganador.
   Future<void> setWinningNumberAndFinishRaffle(
     int raffleId,
     String winningNumber,
   ) async {
+    if (winningNumber.isEmpty) return resetDraw(raffleId);
+
     final db = await _db;
 
     await db.transaction((txn) async {
@@ -329,13 +346,32 @@ class RaffleLocalDatasource {
         'updated_at': DateTime.now().toDbString(),
       };
 
-      if (gameType == 'app' && winningNumber.isNotEmpty) {
+      if (gameType == 'app') {
         values['status'] = 'expired';
       }
 
       await txn
           .update('raffles', values, where: 'id = ?', whereArgs: [raffleId]);
     });
+  }
+
+  /// Deshace el sorteo: borra el número ganador y reabre la rifa.
+  ///
+  /// Las dos cosas van juntas en una transacción. Limpiar solo el número
+  /// dejaba la rifa en `expired` para siempre, sin forma de volver a sortear
+  /// ni de vender, que era el reinicio anterior.
+  Future<void> resetDraw(int raffleId) async {
+    final db = await _db;
+    await db.update(
+      'raffles',
+      {
+        'winning_number': null,
+        'status': 'active',
+        'updated_at': DateTime.now().toDbString(),
+      },
+      where: 'id = ?',
+      whereArgs: [raffleId],
+    );
   }
 
   // --------------------------------------------------------------------

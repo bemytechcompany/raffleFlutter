@@ -30,6 +30,20 @@ class GiveawayUseCases {
     );
   }
 
+  Future<void> updateGiveaway({
+    required int giveawayId,
+    required String name,
+    required String description,
+    required DateTime drawDate,
+  }) {
+    return repository.updateGiveaway(
+      giveawayId: giveawayId,
+      name: name,
+      description: description,
+      drawDate: drawDate,
+    );
+  }
+
   Future<List<Giveaway>> getGiveaways() {
     return repository.getGiveaways();
   }

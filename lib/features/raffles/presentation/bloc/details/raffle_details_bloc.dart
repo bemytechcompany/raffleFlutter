@@ -26,6 +26,7 @@ class RaffleDetailsBloc extends Bloc<RaffleDetailsEvent, RaffleDetailsState> {
     on<EditTicket>(_onEditTicket);
     on<ChangeRaffleStatus>(_onChangeStatus);
     on<SetWinningNumber>(_onSetWinningNumber);
+    on<ResetDraw>(_onResetDraw);
   }
 
   Future<void> _onLoad(
@@ -64,15 +65,15 @@ class RaffleDetailsBloc extends Bloc<RaffleDetailsEvent, RaffleDetailsState> {
     }
   }
 
-  /// Sortea un boleto disponible entre **todos** los de la rifa.
+  /// Sortea el boleto ganador entre **todos** los de la rifa.
   ///
   /// Es una consulta, no una transición de estado: quien llama enseña el
   /// número y solo si se confirma dispara [SetWinningNumber]. Por eso es un
   /// método y no un evento.
-  Future<Ticket?> pickRandomAvailableTicket() async {
+  Future<Ticket?> pickWinningTicket() async {
     final raffleId = _raffleId;
     if (raffleId == null) return null;
-    return repository.pickRandomAvailableTicket(raffleId);
+    return repository.pickWinningTicket(raffleId);
   }
 
   /// Todos los boletos de la rifa.
@@ -114,6 +115,11 @@ class RaffleDetailsBloc extends Bloc<RaffleDetailsEvent, RaffleDetailsState> {
     );
   }
 
+  Future<void> _onResetDraw(
+      ResetDraw event, Emitter<RaffleDetailsState> emit) async {
+    await _mutate(emit, () => repository.resetDraw(event.raffleId));
+  }
+
   /// Aplica un cambio y refresca cabecera y página actual sin volver al
   /// spinner de pantalla completa.
   Future<void> _mutate(
@@ -122,7 +128,17 @@ class RaffleDetailsBloc extends Bloc<RaffleDetailsEvent, RaffleDetailsState> {
   ) async {
     final current = state;
     final raffleId = _raffleId;
-    if (current is! RaffleDetailsLoaded || raffleId == null) return;
+
+    // Antes se salía con un `return` mudo. Si el evento llegaba a un bloc sin
+    // rifa cargada —por ejemplo desde un diálogo montado en el Navigator raíz,
+    // que resuelve otro provider— no se escribía nada y la pantalla se quedaba
+    // igual, sin pista de que el sorteo no había ocurrido.
+    if (current is! RaffleDetailsLoaded || raffleId == null) {
+      emit(const RaffleDetailsError(
+        'No hay ninguna rifa cargada en esta pantalla.',
+      ));
+      return;
+    }
 
     try {
       await action();

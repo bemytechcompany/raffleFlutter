@@ -44,9 +44,15 @@ class _TicketGridState extends State<TicketGrid> {
     widget.onPageChanged?.call(page.clamp(0, totalPages - 1));
   }
 
-  String _formatNumber(int number) {
-    if (widget.raffle.gameType == 'lottery') {
-      return number.toString().padLeft(widget.raffle.digitCount, '0');
+  String _formatNumber(int number) => _formatNumberFor(widget.raffle, number);
+
+  /// El formato depende de `gameType` y `digitCount`, así que se toma de la
+  /// rifa que se está pintando y no de la que llegó por parámetro: durante un
+  /// sorteo el widget conserva una copia vieja mientras el bloc ya tiene la
+  /// nueva, y comparar contra la vieja dejaba al ganador sin resaltar.
+  String _formatNumberFor(Raffle raffle, int number) {
+    if (raffle.gameType == 'lottery') {
+      return number.toString().padLeft(raffle.digitCount, '0');
     }
     return number.toString();
   }
@@ -94,26 +100,32 @@ class _TicketGridState extends State<TicketGrid> {
   ///
   /// El sorteo lo hace la base entre todos los boletos disponibles de la rifa,
   /// no entre los de la página cargada.
-  Future<void> _selectRandomTicket(BuildContext context) async {
+  Future<void> _selectRandomTicket(BuildContext context, Raffle raffle) async {
+    // El bloc se resuelve **antes** de abrir el diálogo, y el resultado se
+    // devuelve por `Navigator.pop`. `showDialog` monta en el Navigator raíz,
+    // así que el context del diálogo no desciende del `BlocProvider` de esta
+    // ruta: buscarlo desde dentro devolvía otro bloc, sin rifa cargada, que
+    // descartaba el evento en silencio.
     final bloc = context.read<RaffleDetailsBloc>();
     final messenger = ScaffoldMessenger.of(context);
 
-    final selectedTicket = await bloc.pickRandomAvailableTicket();
+    final selectedTicket = await bloc.pickWinningTicket();
     if (!mounted) return;
 
     if (selectedTicket == null) {
       messenger.showSnackBar(
-        const SnackBar(content: Text('No hay números disponibles')),
+        const SnackBar(content: Text('No hay boletos para sortear')),
       );
       return;
     }
 
     if (!context.mounted) return;
 
-    // Mostrar diálogo de confirmación
-    await showDialog(
+    final winningNumber = _formatNumberFor(raffle, selectedTicket.number);
+
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Confirmar Número Ganador'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -121,7 +133,7 @@ class _TicketGridState extends State<TicketGrid> {
             const Text('¿Deseas establecer este número como el ganador?'),
             const SizedBox(height: 16),
             Text(
-              _formatNumber(selectedTicket.number),
+              winningNumber,
               style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -132,35 +144,37 @@ class _TicketGridState extends State<TicketGrid> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cancelar'),
           ),
-                      ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                context.read<RaffleDetailsBloc>().add(
-                      SetWinningNumber(
-                        raffleId: widget.raffle.id!,
-                        winningNumber: _formatNumber(selectedTicket.number),
-                      ),
-                    );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.buttonGreenBackground,
-                foregroundColor: AppColors.buttonGreenForeground,
-                side: const BorderSide(color: AppColors.buttonGreenBorder),
-              ),
-              child: const Text('Confirmar'),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.buttonGreenBackground,
+              foregroundColor: AppColors.buttonGreenForeground,
+              side: const BorderSide(color: AppColors.buttonGreenBorder),
             ),
+            child: const Text('Confirmar'),
+          ),
         ],
       ),
     );
+
+    if (confirmed != true) return;
+
+    bloc.add(SetWinningNumber(
+      raffleId: raffle.id!,
+      winningNumber: winningNumber,
+    ));
   }
 
-  void _showWinningNumberDialog(BuildContext context) {
-    showDialog(
+  Future<void> _showWinningNumberDialog(
+      BuildContext context, Raffle raffle) async {
+    final bloc = context.read<RaffleDetailsBloc>();
+
+    final reset = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Número Ganador'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -168,7 +182,7 @@ class _TicketGridState extends State<TicketGrid> {
             const Text('El número ganador es:'),
             const SizedBox(height: 16),
             Text(
-              widget.raffle.winningNumber!,
+              raffle.winningNumber!,
               style: const TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -179,28 +193,23 @@ class _TicketGridState extends State<TicketGrid> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('Cerrar'),
           ),
-          if (widget.raffle.status != 'expired')
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                context.read<RaffleDetailsBloc>().add(
-                      SetWinningNumber(
-                        raffleId: widget.raffle.id!,
-                        winningNumber: '',
-                      ),
-                    );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-              ),
-              child: const Text('Reiniciar Sorteo'),
-            ),
+          // Sin condicionar al estado: sortear en la app deja la rifa en
+          // `expired`, que es justo el caso en el que hace falta reiniciar.
+          ElevatedButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Reiniciar Sorteo'),
+          ),
         ],
       ),
     );
+
+    if (reset != true) return;
+
+    bloc.add(ResetDraw(raffle.id!));
   }
 
   Widget _buildPagination() {
@@ -365,8 +374,8 @@ class _TicketGridState extends State<TicketGrid> {
               itemCount: currentPageTickets.length,
               itemBuilder: (context, index) {
                 final ticket = currentPageTickets[index];
-                final isWinner =
-                    currentRaffle.winningNumber == _formatNumber(ticket.number);
+                final number = _formatNumberFor(currentRaffle, ticket.number);
+                final isWinner = currentRaffle.winningNumber == number;
                 final is4Digits = currentRaffle.digitCount >= 4;
 
                 return InkWell(
@@ -405,7 +414,7 @@ class _TicketGridState extends State<TicketGrid> {
                                 vertical: is4Digits ? 8 : 4,
                               ),
                               child: Text(
-                                _formatNumber(ticket.number),
+                                number,
                                 style: TextStyle(
                                   fontSize: _getTicketFontSize(
                                       currentRaffle.digitCount),
@@ -451,8 +460,7 @@ class _TicketGridState extends State<TicketGrid> {
                   _buildLegendItem('Reservado', AppColors.statusReserved),
                   const SizedBox(width: 16),
                   _buildLegendItem('Vendido', AppColors.statusSold),
-                  if (currentRaffle.winningNumber != null &&
-                      currentRaffle.winningNumber!.isNotEmpty) ...[
+                  if (currentRaffle.hasWinner) ...[
                     const SizedBox(width: 16),
                     _buildLegendItem('Ganador', AppColors.awardGold),
                   ],
@@ -468,9 +476,9 @@ class _TicketGridState extends State<TicketGrid> {
   Widget _buildActionButton([Raffle? currentRaffle]) {
     final raffle = currentRaffle ?? widget.raffle;
 
-    if (raffle.winningNumber != null && raffle.winningNumber!.isNotEmpty) {
+    if (raffle.hasWinner) {
       return ElevatedButton.icon(
-        onPressed: () => _showWinningNumberDialog(context),
+        onPressed: () => _showWinningNumberDialog(context, raffle),
         icon: const Icon(Icons.emoji_events),
         label: const Text('Ver Número Ganador'),
         style: ElevatedButton.styleFrom(
@@ -484,7 +492,7 @@ class _TicketGridState extends State<TicketGrid> {
 
     if (widget.showRandomButton && raffle.gameType == 'app') {
       return ElevatedButton.icon(
-        onPressed: () => _selectRandomTicket(context),
+        onPressed: () => _selectRandomTicket(context, raffle),
         icon: const Icon(Icons.shuffle),
         label: const Text('Seleccionar Número Ganador'),
         style: ElevatedButton.styleFrom(

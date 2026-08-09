@@ -38,9 +38,12 @@ abstract class RaffleRepository {
   /// Solo los boletos que tienen comprador.
   Future<List<Ticket>> getTicketsWithBuyers(int raffleId);
 
-  /// Un boleto disponible al azar, sorteado por la base entre todos los de la
-  /// rifa y no solo entre los de la página cargada.
-  Future<Ticket?> pickRandomAvailableTicket(int raffleId);
+  /// El boleto ganador, sorteado por la base entre todos los de la rifa y no
+  /// solo entre los de la página cargada.
+  ///
+  /// Si hay boletos vendidos el ganador sale de ellos; si aún no se ha vendido
+  /// ninguno, entran todos.
+  Future<Ticket?> pickWinningTicket(int raffleId);
 
   /// Todos los boletos de la rifa. Lo usan compartir y exportar, que necesitan
   /// la lista completa; el resto de pantallas debe paginar.
@@ -51,6 +54,9 @@ abstract class RaffleRepository {
   Future<void> updateRaffleStatus(int raffleId, String newStatus);
   Future<void> setWinningNumberAndFinishRaffle(
       int raffleId, String winningNumber);
+
+  /// Deshace el sorteo: borra el número ganador y devuelve la rifa a `active`.
+  Future<void> resetDraw(int raffleId);
 
   /// Envía la rifa a la papelera; se puede restaurar.
   Future<void> moveToTrash(int raffleId);

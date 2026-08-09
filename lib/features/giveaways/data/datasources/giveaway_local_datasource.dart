@@ -53,6 +53,30 @@ class GiveawayLocalDatasource {
     );
   }
 
+  /// Actualiza los datos editables del sorteo.
+  ///
+  /// El estado no entra aquí: lo lleva [updateGiveawayStatus], porque también
+  /// cambia por su cuenta al sortear un ganador.
+  Future<void> updateGiveaway({
+    required int id,
+    required String name,
+    required String description,
+    required DateTime drawDate,
+  }) async {
+    final db = await _db;
+    await db.update(
+      'giveaways',
+      {
+        'name': name,
+        'description': description,
+        'draw_date': drawDate.toDbString(),
+        'updated_at': DateTime.now().toDbString(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<void> deleteGiveaway(int id) async {
     final db = await _db;
     await db.delete('giveaways', where: 'id = ?', whereArgs: [id]);

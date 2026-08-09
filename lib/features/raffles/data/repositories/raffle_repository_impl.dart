@@ -151,8 +151,8 @@ class RaffleRepositoryImpl implements RaffleRepository {
   }
 
   @override
-  Future<Ticket?> pickRandomAvailableTicket(int raffleId) async {
-    final row = await raffleLocalDatasource.pickRandomAvailableTicket(raffleId);
+  Future<Ticket?> pickWinningTicket(int raffleId) async {
+    final row = await raffleLocalDatasource.pickWinningTicket(raffleId);
     return row == null ? null : TicketModel.fromMap(row).toEntity();
   }
 
@@ -201,6 +201,10 @@ class RaffleRepositoryImpl implements RaffleRepository {
           int raffleId, String winningNumber) =>
       raffleLocalDatasource.setWinningNumberAndFinishRaffle(
           raffleId, winningNumber);
+
+  @override
+  Future<void> resetDraw(int raffleId) =>
+      raffleLocalDatasource.resetDraw(raffleId);
 
   @override
   Future<void> moveToTrash(int raffleId) =>

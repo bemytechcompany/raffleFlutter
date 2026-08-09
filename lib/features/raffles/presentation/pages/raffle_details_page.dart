@@ -204,7 +204,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                                     ),
                                   ),
                                   // Mostrar número ganador si existe
-                                  if (raffle!.winningNumber != null && raffle!.winningNumber!.isNotEmpty) ...[
+                                  if (raffle!.hasWinner) ...[
                                     const SizedBox(height: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -398,7 +398,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                       onPressed: () => setState(() => showDeleteConfirm = true),
                       icon: const Icon(Icons.delete, color: AppColors.text),
                       label: const Text(
-                        'Delete Raffle',
+                        'Eliminar Rifa',
                         style: TextStyle(color: AppColors.text),
                       ),
                     ),
@@ -413,11 +413,14 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                   AlertDialog(
                     backgroundColor: AppColors.backgroundModal,
                     title: const Text(
-                      'Confirm Deletion',
+                      'Eliminar Rifa',
                       style: TextStyle(color: AppColors.text),
                     ),
+                    // A diferencia de los sorteos, esto no borra nada de
+                    // verdad: manda la rifa a la papelera y se puede restaurar.
                     content: const Text(
-                      'Are you sure you want to delete this raffle?',
+                      '¿Seguro que quieres eliminar esta rifa? '
+                      'Se moverá a la papelera y podrás restaurarla desde allí.',
                       style: TextStyle(color: AppColors.textSecondary),
                     ),
                     actions: [
@@ -425,7 +428,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                         onPressed: () =>
                             setState(() => showDeleteConfirm = false),
                         child: const Text(
-                          'Cancel',
+                          'Cancelar',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       ),
@@ -435,7 +438,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                           backgroundColor: AppColors.error,
                         ),
                         child: const Text(
-                          'Delete',
+                          'Eliminar',
                           style: TextStyle(color: AppColors.text),
                         ),
                       ),
@@ -456,7 +459,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
 
           return const Center(
             child: Text(
-              'Something went wrong',
+              'Algo salió mal',
               style: TextStyle(color: AppColors.textSecondary),
             ),
           );

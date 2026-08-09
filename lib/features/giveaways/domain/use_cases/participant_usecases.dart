@@ -47,4 +47,8 @@ class ParticipantUseCases {
   Future<Participant?> drawWinner(int giveawayId) {
     return repository.drawWinner(giveawayId);
   }
+
+  Future<void> resetDraw(int giveawayId) {
+    return repository.resetDraw(giveawayId);
+  }
 }

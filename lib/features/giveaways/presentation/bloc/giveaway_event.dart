@@ -28,6 +28,20 @@ class UpdateGiveawayStatusEvent extends GiveawayEvent {
   });
 }
 
+class UpdateGiveawayEvent extends GiveawayEvent {
+  final int giveawayId;
+  final String name;
+  final String description;
+  final DateTime drawDate;
+
+  UpdateGiveawayEvent({
+    required this.giveawayId,
+    required this.name,
+    required this.description,
+    required this.drawDate,
+  });
+}
+
 class DeleteGiveawayEvent extends GiveawayEvent {
   final int giveawayId;
 

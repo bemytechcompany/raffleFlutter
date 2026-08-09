@@ -143,11 +143,25 @@ class ParticipantLocalDatasource {
         'participants',
         {
           'is_winner': 1,
+          // `is_preselected` se deja como está: es la marca de que hubo
+          // preselección y, si se apagara, la ronda siguiente creería que no
+          // la hubo y repescaría a quien nunca entró. Quien ya ganó sale del
+          // recuento por `is_winner`, no borrando su preselección.
           'award': award,
           'updated_at': updatedAt.toDbString(),
         },
         where: 'id = ?',
         whereArgs: [winner.id],
+      );
+
+      // El sorteo ya dio resultado, así que deja de estar pendiente. Va en la
+      // misma transacción porque `giveaways` vive en esta base; uno cancelado
+      // se queda como está.
+      await txn.update(
+        'giveaways',
+        {'status': 'completed', 'updated_at': updatedAt.toDbString()},
+        where: 'id = ? AND status = ?',
+        whereArgs: [giveawayId, 'pending'],
       );
 
       // Se devuelve ya con el premio aplicado para que quien llame no tenga
@@ -162,6 +176,37 @@ class ParticipantLocalDatasource {
         award: award,
         createdAt: winner.createdAt,
         updatedAt: updatedAt,
+      );
+    });
+  }
+
+  /// Deshace el sorteo: quita ganadores, premios y preselección, y devuelve el
+  /// sorteo a pendiente.
+  ///
+  /// Los participantes se conservan; lo que se borra es el resultado, para
+  /// poder repetir el sorteo sin volver a capturar a nadie.
+  Future<void> resetDraw(int giveawayId) async {
+    final db = await _db;
+    final updatedAt = DateTime.now();
+
+    await db.transaction((txn) async {
+      await txn.update(
+        'participants',
+        {
+          'is_winner': 0,
+          'is_preselected': 0,
+          'award': null,
+          'updated_at': updatedAt.toDbString(),
+        },
+        where: 'giveaway_id = ?',
+        whereArgs: [giveawayId],
+      );
+
+      await txn.update(
+        'giveaways',
+        {'status': 'pending', 'updated_at': updatedAt.toDbString()},
+        where: 'id = ? AND status = ?',
+        whereArgs: [giveawayId, 'completed'],
       );
     });
   }
