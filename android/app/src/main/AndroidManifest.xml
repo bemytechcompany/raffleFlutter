@@ -6,8 +6,12 @@
         android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
-    <!-- Android 13+: acceso a la galería para elegir la imagen de la rifa. -->
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Android 13+ NO lleva READ_MEDIA_IMAGES a propósito: Play solo permite ese
+         permiso si los selectores del sistema no bastan, y aquí sí bastan.
+         `image_picker` abre el Photo Picker de Android (ACTION_PICK_IMAGES), que
+         devuelve la imagen elegida sin conceder acceso a la galería completa, y
+         `gal` guarda vía MediaStore con scoped storage. Ninguno de los dos
+         plugins declara permisos por su cuenta. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="Raffle"

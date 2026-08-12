@@ -17,7 +17,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
 
-version: 1.0.5+7
+version: 1.0.6+8
 
 environment:
   sdk: ^3.5.3
@@ -49,7 +49,6 @@ dependencies:
   #
   # Se queda en la 12: la 13 compila contra el Android SDK platform 37, lo que
   # obligaría a subir compileSdk y AGP sin ganar nada funcional.
-  permission_handler: ^12.0.3
   equatable: ^2.1.0
   url_launcher: ^6.3.2
   share_plus: ^13.3.0

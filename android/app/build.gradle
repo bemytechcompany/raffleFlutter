@@ -16,9 +16,8 @@ if (hasSigningConfig) {
 
 android {
     namespace = 'raffle.com.raffle'
-    // 36 lo exige share_plus. `targetSdk` se queda en 35 a propósito: subirlo
-    // activa los cambios de comportamiento de Android 16 y eso hay que
-    // probarlo en pantalla, no solo compilarlo.
+    // 36 lo exige share_plus, y desde el 31/08/2026 Play no acepta
+    // actualizaciones por debajo de ese nivel de API.
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -36,7 +35,12 @@ android {
         // Explícitos en vez de heredar de Flutter: Play exige un targetSdk
         // concreto y así el build no cambia al actualizar el SDK.
         minSdk = 24
-        targetSdk = 35
+        // Android 16. Obligatorio para publicar actualizaciones desde el
+        // 31/08/2026. Activa edge-to-edge sin posibilidad de desactivarlo: los
+        // insets los absorbe el Scaffold de `main_layout` (AppBar +
+        // BottomNavigationBar) y, en la única pantalla que dibuja su propia
+        // cabecera, el SafeArea de `raffle_details_page`.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
