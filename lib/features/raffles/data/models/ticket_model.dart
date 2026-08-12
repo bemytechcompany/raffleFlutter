@@ -1,5 +1,6 @@
 import 'package:raffle/features/raffles/domain/entities/ticket.dart';
 
+/// Traducción entre la tabla `tickets` y la entidad [Ticket].
 class TicketModel extends Ticket {
   TicketModel({
     required super.id,
@@ -11,33 +12,36 @@ class TicketModel extends Ticket {
   });
 
   factory TicketModel.fromMap(Map<String, dynamic> map) {
-    final id = int.tryParse(map['id'].toString());
-    final number = int.tryParse(map['number'].toString());
-    final raffleId = int.tryParse(map['raffle_id'].toString());
-    final status = map['status'];
-
-    if (id == null || number == null || raffleId == null || status == null) {
-      throw Exception('❌ Ticket mal formado: $map');
-    }
     return TicketModel(
-      id: id,
-      number: number,
-      status: status,
-      raffleId: raffleId,
+      id: map['id'] as int?,
+      raffleId: map['raffle_id'] as int,
+      number: map['number'] as int,
+      status: map['status'] as String,
       buyerName: map['buyer_name'] as String?,
       buyerContact: map['buyer_contact'] as String?,
     );
   }
 
-  @override
-  Map<String, dynamic> toMap() {
+  factory TicketModel.fromEntity(Ticket ticket) {
+    return TicketModel(
+      id: ticket.id,
+      raffleId: ticket.raffleId,
+      number: ticket.number,
+      status: ticket.status,
+      buyerName: ticket.buyerName,
+      buyerContact: ticket.buyerContact,
+    );
+  }
+
+  /// Columnas para `insert`. El `raffleId` se pasa aparte porque al crear una
+  /// rifa el id real solo se conoce dentro de la transacción.
+  Map<String, dynamic> toColumns({required int raffleId}) {
     return {
-      'id': id,
+      'raffle_id': raffleId,
       'number': number,
       'status': status,
-      'buyerName': buyerName,
-      'buyerContact': buyerContact,
-      'raffleId': raffleId,
+      'buyer_name': buyerName,
+      'buyer_contact': buyerContact,
     };
   }
 
@@ -49,17 +53,6 @@ class TicketModel extends Ticket {
       buyerName: buyerName,
       buyerContact: buyerContact,
       raffleId: raffleId,
-    );
-  }
-
-  factory TicketModel.fromEntity(Ticket ticket) {
-    return TicketModel(
-      id: ticket.id,
-      number: ticket.number,
-      status: ticket.status,
-      buyerName: ticket.buyerName,
-      buyerContact: ticket.buyerContact,
-      raffleId: ticket.raffleId,
     );
   }
 }

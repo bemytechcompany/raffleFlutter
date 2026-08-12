@@ -15,12 +15,10 @@ class AppTheme {
         primary: AppColors.primary,
         secondary: AppColors.secondary,
         surface: AppColors.backgroundCard,
-        background: AppColors.background,
         error: AppColors.error,
         onPrimary: Colors.black,
         onSecondary: Colors.white,
         onSurface: AppColors.text,
-        onBackground: AppColors.text,
         onError: Colors.white,
       ),
       
@@ -49,7 +47,7 @@ class AppTheme {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.buttonGreenBackground,
           foregroundColor: AppColors.buttonGreenForeground,
-          side: BorderSide(color: AppColors.buttonGreenBorder),
+          side: const BorderSide(color: AppColors.buttonGreenBorder),
           elevation: 2,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),

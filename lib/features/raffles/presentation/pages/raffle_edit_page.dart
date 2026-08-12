@@ -6,6 +6,7 @@ import 'package:raffle/features/raffles/domain/entities/raffle.dart';
 import 'package:raffle/features/raffles/presentation/bloc/raffle_bloc.dart';
 import 'package:raffle/features/raffles/presentation/bloc/raffle_event.dart';
 import '../../../../core/theme/app_colors.dart';
+import 'package:raffle/core/money/money.dart';
 import '../../../../core/widgets/keyboard_dismissible.dart';
 
 class RaffleEditPage extends StatefulWidget {
@@ -34,7 +35,8 @@ class _RaffleEditPageState extends State<RaffleEditPage> {
     super.initState();
     _nameController = TextEditingController(text: widget.raffle.name);
     _lotteryNumberController = TextEditingController(text: widget.raffle.lotteryNumber);
-    _priceController = TextEditingController(text: widget.raffle.price.toString());
+    _priceController = TextEditingController(
+        text: Money.toEditableString(widget.raffle.priceMinor));
     _drawDate = widget.raffle.date;
     _gameType = widget.raffle.gameType;
     if (widget.raffle.imagePath != null) {
@@ -61,12 +63,15 @@ class _RaffleEditPageState extends State<RaffleEditPage> {
 
   void _submit() {
     if (_formKey.currentState?.validate() ?? false) {
+      // El validador ya garantizó que el precio se puede convertir.
+      final priceMinor = Money.tryParse(_priceController.text)!;
+
       context.read<RaffleBloc>().add(
             UpdateRaffle(
               raffleId: widget.raffle.id!,
               name: _nameController.text.trim(),
               lotteryNumber: _gameType == 'lottery' ? _lotteryNumberController.text.trim() : '',
-              price: double.parse(_priceController.text.trim()),
+              priceMinor: priceMinor,
               drawDate: _drawDate,
               imagePath: _selectedImage?.path,
             ),
@@ -120,10 +125,10 @@ class _RaffleEditPageState extends State<RaffleEditPage> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(0.1),
+                    color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: Theme.of(context).primaryColor.withOpacity(0.3),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Row(
@@ -218,7 +223,7 @@ class _RaffleEditPageState extends State<RaffleEditPage> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.buttonGreenBackground,
                     foregroundColor: AppColors.buttonGreenForeground,
-                    side: BorderSide(color: AppColors.buttonGreenBorder),
+                    side: const BorderSide(color: AppColors.buttonGreenBorder),
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),

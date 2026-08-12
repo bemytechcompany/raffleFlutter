@@ -56,7 +56,10 @@ class _StatusModalState extends State<StatusModal>
         ),
       },
       {
-        'value': 'inactiva',
+        // El valor tiene que ser el de la base: `raffles.status` lleva un
+        // CHECK con ('active','inactive','expired') y escribir 'inactiva'
+        // reventaba la actualización con un error de constraint.
+        'value': 'inactive',
         'icon': Icons.pause_circle_outline,
         'gradient': const LinearGradient(
           colors: [Color(0xFFFF9800), Color(0xFFE65100)],
@@ -202,7 +205,7 @@ class _StatusModalState extends State<StatusModal>
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 12),
                           ),
-                          child: const Text('Cancel'),
+                          child: const Text('Cancelar'),
                         ),
                       ],
                     ),
@@ -316,7 +319,7 @@ class _StatusModalState extends State<StatusModal>
     switch (status) {
       case 'active':
         return 'Activa';
-      case 'inactiva':
+      case 'inactive':
         return 'Inactiva';
       case 'expired':
         return 'Expirada';
@@ -329,7 +332,7 @@ class _StatusModalState extends State<StatusModal>
     switch (status) {
       case 'active':
         return 'La rifa está activa y se pueden vender tickets';
-      case 'inactiva':
+      case 'inactive':
         return 'Pausada temporalmente, no se venderán tickets';
       case 'expired':
         return 'La rifa ha finalizado y ya no está disponible';
@@ -342,7 +345,7 @@ class _StatusModalState extends State<StatusModal>
     switch (status) {
       case 'active':
         return Colors.green;
-      case 'inactiva':
+      case 'inactive':
         return Colors.orange;
       case 'expired':
         return Colors.red;

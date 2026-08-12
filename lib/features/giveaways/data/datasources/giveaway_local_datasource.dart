@@ -1,74 +1,76 @@
-import 'dart:io';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+
+import 'package:raffle/core/db/app_database.dart';
 import '../models/giveaway_model.dart';
 
+/// Consultas sobre la tabla `giveaways`.
+///
+/// Los participantes cuelgan de esta tabla por clave foránea con
+/// `ON DELETE CASCADE`, así que borrar un sorteo se los lleva por delante sin
+/// tener que coordinarlo desde Dart.
 class GiveawayLocalDatasource {
-  static final GiveawayLocalDatasource instance =
-      GiveawayLocalDatasource._internal();
-  static Database? _database;
+  final DatabaseProvider _databaseProvider;
 
-  GiveawayLocalDatasource._internal();
+  GiveawayLocalDatasource({DatabaseProvider? databaseProvider})
+      : _databaseProvider =
+            databaseProvider ?? (() => AppDatabase.instance.database);
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
-  }
+  static final GiveawayLocalDatasource instance = GiveawayLocalDatasource();
 
-  Future<Database> _initDatabase() async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path, 'giveaway.db');
-
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _onCreate,
-    );
-  }
-
-  Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE giveaways (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT NOT NULL,
-        drawDate TEXT NOT NULL,
-        status TEXT NOT NULL,
-        createdAt TEXT NOT NULL,
-        updatedAt TEXT NOT NULL
-      )
-    ''');
-  }
+  Future<Database> get _db => _databaseProvider();
 
   Future<int> insertGiveaway(GiveawayModel model) async {
-    final db = await database;
-    return await db.insert('giveaways', model.toMap());
+    final db = await _db;
+    return db.insert('giveaways', model.toColumns());
   }
 
   Future<List<GiveawayModel>> getAllGiveaways() async {
-    final db = await database;
-    final res = await db.query('giveaways', orderBy: 'createdAt DESC');
-    return res.map((e) => GiveawayModel.fromMap(e)).toList();
+    final db = await _db;
+    final rows = await db.query(
+      'giveaways',
+      where: 'deleted_at IS NULL',
+      orderBy: 'created_at DESC',
+    );
+    return rows.map(GiveawayModel.fromMap).toList();
   }
 
   Future<GiveawayModel?> getGiveawayById(int id) async {
-    final db = await database;
-    final res = await db.query('giveaways', where: 'id = ?', whereArgs: [id]);
-    if (res.isNotEmpty) {
-      return GiveawayModel.fromMap(res.first);
-    }
-    return null;
+    final db = await _db;
+    final rows = await db.query('giveaways', where: 'id = ?', whereArgs: [id]);
+    return rows.isEmpty ? null : GiveawayModel.fromMap(rows.first);
   }
 
   Future<void> updateGiveawayStatus(int id, String newStatus) async {
-    final db = await database;
+    final db = await _db;
     await db.update(
       'giveaways',
       {
         'status': newStatus,
-        'updatedAt': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toDbString(),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Actualiza los datos editables del sorteo.
+  ///
+  /// El estado no entra aquí: lo lleva [updateGiveawayStatus], porque también
+  /// cambia por su cuenta al sortear un ganador.
+  Future<void> updateGiveaway({
+    required int id,
+    required String name,
+    required String description,
+    required DateTime drawDate,
+  }) async {
+    final db = await _db;
+    await db.update(
+      'giveaways',
+      {
+        'name': name,
+        'description': description,
+        'draw_date': drawDate.toDbString(),
+        'updated_at': DateTime.now().toDbString(),
       },
       where: 'id = ?',
       whereArgs: [id],
@@ -76,7 +78,7 @@ class GiveawayLocalDatasource {
   }
 
   Future<void> deleteGiveaway(int id) async {
-    final db = await database;
+    final db = await _db;
     await db.delete('giveaways', where: 'id = ?', whereArgs: [id]);
   }
 }

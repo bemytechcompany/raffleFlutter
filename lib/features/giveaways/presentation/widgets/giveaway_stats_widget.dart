@@ -13,8 +13,11 @@ class GiveawayStatsWidget extends StatelessWidget {
       builder: (context, state) {
         if (state is ParticipantLoaded) {
           final total = state.participants.length;
+          // Solo los que siguen en el bombo. Contando `isPreselected` a secas,
+          // el número se quedaba clavado en el inicial: los ya premiados
+          // seguían sumando aunque no pudieran volver a salir.
           final preselected =
-              state.participants.where((p) => p.isPreselected).length;
+              state.participants.where((p) => p.isPendingPreselection).length;
           final winners = state.participants.where((p) => p.isWinner).length;
 
           return Row(

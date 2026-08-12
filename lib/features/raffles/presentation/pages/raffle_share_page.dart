@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:raffle/core/money/money.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -100,9 +101,11 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
         final tempDir = await getTemporaryDirectory();
         final file = await File('${tempDir.path}/raffle_share.png').create();
         await file.writeAsBytes(pngBytes);
-        await Share.shareXFiles(
-          [XFile(file.path)],
-          text: messageController.text,
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path)],
+            text: messageController.text,
+          ),
         );
       } else {
         if (Platform.isIOS) {
@@ -110,7 +113,8 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
           final tempDir = await getTemporaryDirectory();
           final file = await File('${tempDir.path}/raffle_share.png').create();
           await file.writeAsBytes(pngBytes);
-          await Share.shareXFiles([XFile(file.path)]);
+          await SharePlus.instance
+              .share(ShareParams(files: [XFile(file.path)]));
         } else {
           // En Android, usamos gal
           final hasAccess = await Gal.hasAccess(toAlbum: true);
@@ -158,7 +162,6 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
             pickerAreaHeightPercent: 0.8,
             enableAlpha: false,
             displayThumbColor: true,
-            showLabel: true,
             paletteType: PaletteType.hsv,
           ),
         ),
@@ -185,7 +188,6 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
             pickerAreaHeightPercent: 0.8,
             enableAlpha: false,
             displayThumbColor: true,
-            showLabel: true,
             paletteType: PaletteType.hsv,
           ),
         ),
@@ -214,7 +216,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
             height: 12,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
             ),
             child: Row(
               children: [
@@ -222,7 +224,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
                   flex: sold,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.8),
+                      color: Colors.red.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.horizontal(
                         left: const Radius.circular(12),
                         right: Radius.circular(
@@ -236,7 +238,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
                     flex: reserved,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.orange.withOpacity(0.8),
+                        color: Colors.orange.withValues(alpha: 0.8),
                         borderRadius: BorderRadius.horizontal(
                           right: Radius.circular(available == 0 ? 12 : 0),
                         ),
@@ -248,7 +250,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
                     flex: available,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.green.withOpacity(0.8),
+                        color: Colors.green.withValues(alpha: 0.8),
                         borderRadius: const BorderRadius.horizontal(
                           right: Radius.circular(12),
                         ),
@@ -284,7 +286,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
               width: 12,
               height: 12,
               decoration: BoxDecoration(
-                color: color.withOpacity(0.8),
+                color: color.withValues(alpha: 0.8),
                 shape: BoxShape.circle,
               ),
             ),
@@ -385,10 +387,10 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
             final ticket = pageTickets[index];
             return Container(
               decoration: BoxDecoration(
-                color: _getTicketColor(ticket.status).withOpacity(gridOpacity),
+                color: _getTicketColor(ticket.status).withValues(alpha: gridOpacity),
                 borderRadius: BorderRadius.circular(6), // Bordes más pequeños
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   width: 0.5, // Borde más delgado
                 ),
               ),
@@ -411,8 +413,9 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
   }
 
   Widget _buildLogoContainer() {
-    if (!showLogo || widget.raffle.imagePath == null)
+    if (!showLogo || widget.raffle.imagePath == null) {
       return const SizedBox.shrink();
+    }
 
     return Container(
       width: logoSize,
@@ -425,7 +428,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
           fit: BoxFit.cover,
         ),
         border: Border.all(
-          color: Colors.white.withOpacity(0.2),
+          color: Colors.white.withValues(alpha: 0.2),
           width: 2,
         ),
       ),
@@ -434,11 +437,6 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-      locale: 'es_MX',
-    );
 
     final dateFormat = DateFormat('dd/MM/yyyy', 'es');
 
@@ -523,10 +521,10 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
                         ),
                         margin: const EdgeInsets.symmetric(horizontal: 20),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(15),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.3),
+                            color: Colors.white.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -586,11 +584,11 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(30),
                         ),
                         child: Text(
-                          'Precio: ${currencyFormat.format(widget.raffle.price)}',
+                          'Precio: ${Money.format(widget.raffle.priceMinor)}',
                           style: TextStyle(
                             color: selectedTextColor,
                             fontSize: 18,
@@ -646,42 +644,44 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
                     ExpansionTile(
                       title: const Text('Fondo'),
                       children: [
-                        ListTile(
-                          title: const Text('Color sólido'),
-                          leading: Radio<bool>(
-                            value: false,
-                            groupValue: useBackgroundImage,
-                            onChanged: (value) => setState(() {
-                              useBackgroundImage = value!;
-                            }),
-                          ),
-                          trailing: GestureDetector(
-                            onTap: useBackgroundImage ? null : _showColorPicker,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: selectedBackgroundColor,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.grey),
+                        // El grupo lo gestiona el ancestro `RadioGroup`; cada
+                        // `Radio` solo declara su valor.
+                        RadioGroup<bool>(
+                          groupValue: useBackgroundImage,
+                          onChanged: (value) => setState(() {
+                            useBackgroundImage = value ?? false;
+                          }),
+                          child: Column(
+                            children: [
+                              ListTile(
+                                title: const Text('Color sólido'),
+                                leading: const Radio<bool>(value: false),
+                                trailing: GestureDetector(
+                                  onTap: useBackgroundImage
+                                      ? null
+                                      : _showColorPicker,
+                                  child: Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: selectedBackgroundColor,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.grey),
+                                    ),
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                        ),
-                        ListTile(
-                          title: const Text('Imagen'),
-                          leading: Radio<bool>(
-                            value: true,
-                            groupValue: useBackgroundImage,
-                            onChanged: (value) => setState(() {
-                              useBackgroundImage = value!;
-                            }),
-                          ),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.image),
-                            onPressed: useBackgroundImage
-                                ? _pickBackgroundImage
-                                : null,
+                              ListTile(
+                                title: const Text('Imagen'),
+                                leading: const Radio<bool>(value: true),
+                                trailing: IconButton(
+                                  icon: const Icon(Icons.image),
+                                  onPressed: useBackgroundImage
+                                      ? _pickBackgroundImage
+                                      : null,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],

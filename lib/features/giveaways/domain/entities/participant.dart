@@ -23,6 +23,13 @@ class Participant extends Equatable {
     required this.updatedAt,
   });
 
+  /// Sigue en el bombo: fue preseleccionado y todavía no le ha tocado.
+  ///
+  /// `isPreselected` no se apaga al ganar porque es lo que le dice al sorteo
+  /// que hubo preselección —si se borrara, la siguiente ronda repescaría a
+  /// quien nunca entró—. Para contar cuántos quedan por salir se usa esto.
+  bool get isPendingPreselection => isPreselected && !isWinner;
+
   @override
   List<Object?> get props => [
         id,

@@ -10,7 +10,8 @@ import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details
 import 'package:raffle/features/raffles/presentation/pages/raffle_create_page.dart';
 import 'package:raffle/features/raffles/presentation/pages/raffle_details_page.dart';
 import 'package:raffle/features/raffles/presentation/pages/raffle_edit_page.dart';
-import 'package:raffle/features/raffles/domain/entities/raffle.dart';
+import 'package:raffle/core/pagination/paged.dart';
+import 'package:raffle/features/raffles/domain/entities/raffle_summary.dart';
 
 import '../../../../core/theme/app_colors.dart';
 
@@ -22,18 +23,21 @@ class RaffleListPage extends StatefulWidget {
 }
 
 class _RaffleListPageState extends State<RaffleListPage> {
-  static const int itemsPerPage = 20;
-  int _currentPage = 0;
-  String _searchQuery = '';
-  String _statusFilter = 'all';
   final TextEditingController _searchController = TextEditingController();
-  List<Raffle> _filteredRaffles = [];
+
+  /// El filtrado, el orden y la paginación los resuelve SQLite; aquí solo se
+  /// pinta lo que llega en el estado.
+  ///
+  /// Se guarda únicamente el filtro de estado, porque el chip necesita saber
+  /// cuál está marcado antes de que llegue la respuesta.
+  String _statusFilter = 'all';
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
-      context.read<RaffleBloc>().add(LoadRaffles());
+      if (!mounted) return;
+      context.read<RaffleBloc>().add(const LoadRaffles());
     });
   }
 
@@ -43,36 +47,11 @@ class _RaffleListPageState extends State<RaffleListPage> {
     super.dispose();
   }
 
-  void _filterRaffles(List<Raffle> allRaffles) {
-    _filteredRaffles = allRaffles.where((raffle) {
-      // Filtro de búsqueda
-      final matchesSearch = _searchQuery.isEmpty ||
-          raffle.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          raffle.lotteryNumber
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase());
-
-      // Filtro de estado
-      final matchesStatus =
-          _statusFilter == 'all' || raffle.status == _statusFilter;
-
-      return matchesSearch && matchesStatus;
-    }).toList();
-
-    // Resetear a la primera página cuando se cambia el filtro
-    _currentPage = 0;
-  }
-
-  int get totalPages => (_filteredRaffles.length / itemsPerPage).ceil();
-
-  List<Raffle> get currentPageRaffles {
-    final start = _currentPage * itemsPerPage;
-    final end = math.min(start + itemsPerPage, _filteredRaffles.length);
-    return _filteredRaffles.sublist(start, end);
-  }
-
-  void _onPageChanged(int page) {
-    setState(() => _currentPage = page);
+  void _onPageChanged(int page, int totalPages) {
+    if (totalPages == 0) return;
+    context
+        .read<RaffleBloc>()
+        .add(ChangeRafflePage(page.clamp(0, totalPages - 1)));
   }
 
   Widget _buildSearchAndFilters() {
@@ -92,11 +71,10 @@ class _RaffleListPageState extends State<RaffleListPage> {
               contentPadding:
                   EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             ),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-            },
+            // El bloc aplica un pequeño retardo antes de consultar, para no
+            // lanzar una query por cada tecla.
+            onChanged: (value) =>
+                context.read<RaffleBloc>().add(SearchRaffles(value)),
           ),
           const SizedBox(height: 12),
           // Filtros por estado
@@ -131,14 +109,14 @@ class _RaffleListPageState extends State<RaffleListPage> {
       ),
       selected: isSelected,
       onSelected: (selected) {
-        setState(() {
-          _statusFilter = selected ? value : 'all';
-        });
+        final status = selected ? value : 'all';
+        setState(() => _statusFilter = status);
+        context.read<RaffleBloc>().add(FilterRafflesByStatus(status));
       },
       backgroundColor: Colors.grey[200],
       checkmarkColor: AppColors.buttonGreenForeground,
       color: WidgetStateProperty.resolveWith<Color?>((states) {
-        if (states.contains(MaterialState.selected)) {
+        if (states.contains(WidgetState.selected)) {
           return AppColors.buttonGreenBackground; // fondo verde activo si está seleccionado
         }
         return Colors.white; // fondo blanco para no seleccionados
@@ -146,7 +124,15 @@ class _RaffleListPageState extends State<RaffleListPage> {
     );
   }
 
-  Widget _buildPagination() {
+  /// Controles de paginación para la página recibida.
+  ///
+  /// Recibe la página por parámetro en vez de leerla de un campo: así no hay
+  /// copia del estado del bloc que pueda quedar desincronizada.
+  Widget _buildPagination(Paged<RaffleSummary> pageData) {
+    final totalPages = pageData.totalPages;
+    final page = pageData.page;
+    final itemsPerPage = pageData.pageSize;
+
     if (totalPages <= 1) return const SizedBox.shrink();
 
     return Container(
@@ -155,7 +141,7 @@ class _RaffleListPageState extends State<RaffleListPage> {
         children: [
           // Indicador de página actual
           Text(
-            'Página ${_currentPage + 1} de $totalPages (${_filteredRaffles.length} rifas)',
+            'Página ${page + 1} de $totalPages (${pageData.total} rifas)',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -173,7 +159,7 @@ class _RaffleListPageState extends State<RaffleListPage> {
                   if (!isSmallScreen)
                     IconButton(
                       onPressed:
-                          _currentPage > 0 ? () => _onPageChanged(0) : null,
+                          page > 0 ? () => _onPageChanged(0, totalPages) : null,
                       icon: const Icon(Icons.first_page),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(
@@ -182,8 +168,8 @@ class _RaffleListPageState extends State<RaffleListPage> {
                       ),
                     ),
                   IconButton(
-                    onPressed: _currentPage > 0
-                        ? () => _onPageChanged(_currentPage - 1)
+                    onPressed: page > 0
+                        ? () => _onPageChanged(page - 1, totalPages)
                         : null,
                     icon: const Icon(Icons.chevron_left),
                     padding: EdgeInsets.zero,
@@ -199,13 +185,13 @@ class _RaffleListPageState extends State<RaffleListPage> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<int>(
-                        value: _currentPage,
+                        value: page,
                         isDense: true,
                         isExpanded: true,
                         items: List.generate(totalPages, (index) {
                           final start = index * itemsPerPage + 1;
                           final end = math.min((index + 1) * itemsPerPage,
-                              _filteredRaffles.length);
+                              pageData.total);
                           return DropdownMenuItem(
                             alignment: Alignment.center,
                             value: index,
@@ -220,15 +206,15 @@ class _RaffleListPageState extends State<RaffleListPage> {
                         }),
                         onChanged: (value) {
                           if (value != null) {
-                            _onPageChanged(value);
+                            _onPageChanged(value, totalPages);
                           }
                         },
                       ),
                     ),
                   ),
                   IconButton(
-                    onPressed: _currentPage < totalPages - 1
-                        ? () => _onPageChanged(_currentPage + 1)
+                    onPressed: page < totalPages - 1
+                        ? () => _onPageChanged(page + 1, totalPages)
                         : null,
                     icon: const Icon(Icons.chevron_right),
                     padding: EdgeInsets.zero,
@@ -239,8 +225,8 @@ class _RaffleListPageState extends State<RaffleListPage> {
                   ),
                   if (!isSmallScreen)
                     IconButton(
-                      onPressed: _currentPage < totalPages - 1
-                          ? () => _onPageChanged(totalPages - 1)
+                      onPressed: page < totalPages - 1
+                          ? () => _onPageChanged(totalPages - 1, totalPages)
                           : null,
                       icon: const Icon(Icons.last_page),
                       padding: EdgeInsets.zero,
@@ -275,7 +261,7 @@ class _RaffleListPageState extends State<RaffleListPage> {
       ),
     );
     if (mounted) {
-      context.read<RaffleBloc>().add(LoadRaffles());
+      context.read<RaffleBloc>().add(const LoadRaffles());
     }
   }
 
@@ -294,16 +280,17 @@ class _RaffleListPageState extends State<RaffleListPage> {
                 if (state is RaffleLoading) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (state is RaffleLoaded) {
-                  // Filtrar las rifas cada vez que cambia el estado
-                  _filterRaffles(state.raffles);
+                  // La página ya viene filtrada y paginada desde SQL.
+                  final pageData = state.page;
+                  final isFiltered = state.isFiltered;
 
-                  if (_filteredRaffles.isEmpty) {
+                  if (pageData.isEmpty) {
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            _searchQuery.isNotEmpty || _statusFilter != 'all'
+                            isFiltered
                                 ? Icons.search_off
                                 : Icons.inbox_outlined,
                             size: 64,
@@ -311,7 +298,7 @@ class _RaffleListPageState extends State<RaffleListPage> {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            _searchQuery.isNotEmpty || _statusFilter != 'all'
+                            isFiltered
                                 ? 'No se encontraron rifas con los criterios de búsqueda.'
                                 : 'No hay rifas creadas.',
                             textAlign: TextAlign.center,
@@ -328,24 +315,20 @@ class _RaffleListPageState extends State<RaffleListPage> {
                   return Column(
                     children: [
                       // Paginación superior
-                      _buildPagination(),
+                      _buildPagination(pageData),
 
                       // Lista de rifas paginada
                       Expanded(
                         child: ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                          itemCount: currentPageRaffles.length,
+                          itemCount: pageData.items.length,
                           itemBuilder: (context, index) {
-                            final raffle = currentPageRaffles[index];
-                            final tickets = raffle.tickets ?? [];
-                            final soldCount = tickets
-                                .where((t) =>
-                                    t.status == 'sold' ||
-                                    t.status == 'reserved')
-                                .length;
-                            final percent = raffle.totalTickets == 0
-                                ? 0.0
-                                : soldCount / raffle.totalTickets;
+                            final summary = pageData.items[index];
+                            final raffle = summary.raffle;
+                            // Contadores ya calculados por SQLite: la lista no
+                            // carga ni un boleto.
+                            final percent =
+                                summary.soldRatio + summary.reservedRatio;
 
                             return Card(
                               margin: const EdgeInsets.only(bottom: 12),
@@ -406,7 +389,7 @@ class _RaffleListPageState extends State<RaffleListPage> {
                                                   decoration: BoxDecoration(
                                                     color: _getStatusColor(
                                                             raffle.status)
-                                                        .withOpacity(0.2),
+                                                        .withValues(alpha: 0.2),
                                                     borderRadius:
                                                         BorderRadius.circular(
                                                             4),
@@ -483,23 +466,23 @@ class _RaffleListPageState extends State<RaffleListPage> {
                                           switch (value) {
                                             case 'edit':
                                               if (raffle.status != 'expired') {
+                                                // Se resuelve el bloc antes de
+                                                // navegar: después del await el
+                                                // context puede estar muerto.
+                                                final bloc =
+                                                    context.read<RaffleBloc>();
                                                 await Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
                                                     builder: (_) =>
                                                         BlocProvider.value(
-                                                      value: context
-                                                          .read<RaffleBloc>(),
+                                                      value: bloc,
                                                       child: RaffleEditPage(
                                                           raffle: raffle),
                                                     ),
                                                   ),
                                                 );
-                                                if (mounted) {
-                                                  context
-                                                      .read<RaffleBloc>()
-                                                      .add(LoadRaffles());
-                                                }
+                                                bloc.add(const LoadRaffles());
                                               }
                                               break;
                                             case 'active':
@@ -586,7 +569,7 @@ class _RaffleListPageState extends State<RaffleListPage> {
                       ),
 
                       // Paginación inferior
-                      _buildPagination(),
+                      _buildPagination(pageData),
                     ],
                   );
                 } else if (state is RaffleError) {
@@ -600,6 +583,10 @@ class _RaffleListPageState extends State<RaffleListPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        // Las pestañas conviven en un IndexedStack, así que hay más de un FAB
+        // montado a la vez. Sin un tag propio compartirían el Hero por defecto
+        // y la animación de navegación reventaría con una assertion.
+        heroTag: 'raffles-fab',
         foregroundColor: AppColors.buttonGreenForeground,
         backgroundColor: AppColors.buttonGreenBackground,
         onPressed: () async {
@@ -615,9 +602,9 @@ class _RaffleListPageState extends State<RaffleListPage> {
             ),
           );
 
-          if (mounted) {
-            context.read<RaffleBloc>().add(LoadRaffles());
-          }
+          // `bloc` se capturó antes de navegar, así que no hace falta volver
+          // a tocar el context.
+          bloc.add(const LoadRaffles());
         },
         child: const Icon(Icons.add),
       ),

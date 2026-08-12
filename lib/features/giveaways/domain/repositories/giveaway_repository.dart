@@ -13,6 +13,14 @@ abstract class GiveawayRepository {
     required String newStatus,
   });
 
+  /// Edita nombre, descripción y fecha. El estado va por su propio método.
+  Future<void> updateGiveaway({
+    required int giveawayId,
+    required String name,
+    required String description,
+    required DateTime drawDate,
+  });
+
   Future<List<Giveaway>> getGiveaways();
 
   Future<Giveaway?> getGiveaway(int id);

@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:raffle/features/raffles/data/datasources/raffle_local_datasource.dart';
-import 'package:raffle/features/raffles/data/datasources/ticket_dao.dart';
 import 'package:raffle/features/raffles/data/repositories/raffle_repository_impl.dart';
 import 'package:raffle/features/raffles/domain/repositories/raffle_repository.dart';
 import 'package:raffle/features/raffles/presentation/bloc/raffle_bloc.dart';
-import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details_bloc.dart';
+import 'package:raffle/features/raffles/presentation/bloc/trash/trash_bloc.dart';
 import 'package:raffle/features/giveaways/presentation/bloc/giveaway_bloc.dart';
-import 'package:raffle/features/giveaways/presentation/bloc/participant_bloc.dart';
 import 'package:raffle/features/giveaways/data/repositories/giveaway_repository_impl.dart';
 import 'package:raffle/features/giveaways/data/repositories/participant_repository_impl.dart';
 import 'package:raffle/features/giveaways/data/datasources/giveaway_local_datasource.dart';
@@ -21,9 +19,10 @@ import 'core/theme/app_theme.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   final RaffleRepository raffleRepository = RaffleRepositoryImpl(
     raffleLocalDatasource: RaffleLocalDatasource.instance,
-    ticketDao: TicketDao.instance,
   );
 
   final giveawayRepository =
@@ -35,14 +34,20 @@ void main() {
   final participantUseCases = ParticipantUseCases(participantRepository);
 
   runApp(
-    MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (_) => RaffleBloc(raffleRepository)),
-        BlocProvider(create: (_) => RaffleDetailsBloc(raffleRepository)),
-        BlocProvider(create: (_) => GiveawayBloc(giveawayUseCases)),
-        BlocProvider(create: (_) => ParticipantBloc(participantUseCases)),
-      ],
-      child: const MyApp(),
+    // `RaffleDetailsBloc` y `ParticipantBloc` no viven aquí a propósito: los
+    // crea la ruta de detalle, uno por rifa o sorteo abierto. Cuando estaban
+    // aquí, un diálogo montado en el Navigator raíz resolvía este bloc vacío
+    // en vez del de la pantalla y el evento se perdía sin dar error.
+    RepositoryProvider<ParticipantUseCases>.value(
+      value: participantUseCases,
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (_) => RaffleBloc(raffleRepository)),
+          BlocProvider(create: (_) => TrashBloc(raffleRepository)),
+          BlocProvider(create: (_) => GiveawayBloc(giveawayUseCases)),
+        ],
+        child: const MyApp(),
+      ),
     ),
   );
 }

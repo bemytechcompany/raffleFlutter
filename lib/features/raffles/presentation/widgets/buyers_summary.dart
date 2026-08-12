@@ -1,43 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:raffle/core/theme/app_colors.dart';
-import 'package:raffle/features/raffles/domain/entities/ticket.dart';
+import 'package:raffle/features/raffles/domain/entities/ticket_counts.dart';
 
+/// Resumen de compradores de una rifa.
+///
+/// Recibe los contadores ya calculados por SQLite: antes recorría los diez mil
+/// boletos en Dart para contarlos en cada reconstrucción.
 class BuyersSummary extends StatelessWidget {
-  final List<Ticket> tickets;
+  final BuyerCounts buyers;
   final VoidCallback onTap;
 
   const BuyersSummary({
     super.key,
-    required this.tickets,
+    required this.buyers,
     required this.onTap,
   });
 
-  Map<String, int> _getBuyersCount() {
-    int total = 0;
-    int sold = 0;
-    int reserved = 0;
-
-    for (var ticket in tickets) {
-      if (ticket.buyerName != null) {
-        total++;
-        if (ticket.status == 'sold') {
-          sold++;
-        } else if (ticket.status == 'reserved') {
-          reserved++;
-        }
-      }
-    }
-
-    return {
-      'total': total,
-      'sold': sold,
-      'reserved': reserved,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
-    final buyersCount = _getBuyersCount();
+    final buyersCount = {
+      'total': buyers.total,
+      'sold': buyers.sold,
+      'reserved': buyers.reserved,
+    };
 
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 8),
@@ -62,10 +47,10 @@ class BuyersSummary extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor.withOpacity(0.1),
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: Theme.of(context).primaryColor.withOpacity(0.3),
+                        color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),

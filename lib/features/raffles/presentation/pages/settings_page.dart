@@ -6,7 +6,7 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Text('No settings yet'),
+      child: Text('Todavía no hay ajustes.'),
     );
   }
 }

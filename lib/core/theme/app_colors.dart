@@ -48,7 +48,16 @@ class AppColors {
   
   // Botones unificados - Verde Activo
   static const Color buttonGreenBackground = Colors.greenAccent; // Verde activo
-  static const Color buttonGreenForeground = Colors.white; // Texto blanco
+
+  /// Texto sobre el verde de los botones.
+  ///
+  /// Negro, no blanco: `greenAccent` es un verde muy claro y el blanco encima
+  /// se queda en 1,4:1 de contraste, muy por debajo del 4,5:1 que pide WCAG
+  /// —el texto casi desaparecía—. En negro sube a ~15:1. Además el
+  /// `ColorScheme` ya declaraba `onPrimary: Colors.black`, así que media app
+  /// pintaba negro y la otra media blanco sobre el mismo verde.
+  static const Color buttonGreenForeground = Colors.black;
+
   static const Color buttonGreenBorder = Color(0xFF388E3C); // Verde más oscuro para borde
   
   // Gradientes comunes
@@ -76,12 +85,12 @@ class AppColors {
   static const Color borderFocus = primary;
   
   // Sombras
-  static Color shadowLight = Colors.black.withOpacity(0.1);
-  static Color shadowMedium = Colors.black.withOpacity(0.3);
-  static Color shadowHeavy = Colors.black.withOpacity(0.5);
+  static Color shadowLight = Colors.black.withValues(alpha: 0.1);
+  static Color shadowMedium = Colors.black.withValues(alpha: 0.3);
+  static Color shadowHeavy = Colors.black.withValues(alpha: 0.5);
   
   // Colores con opacidad
-  static Color primaryWithOpacity(double opacity) => primary.withOpacity(opacity);
-  static Color blackWithOpacity(double opacity) => Colors.black.withOpacity(opacity);
-  static Color whiteWithOpacity(double opacity) => Colors.white.withOpacity(opacity);
+  static Color primaryWithOpacity(double opacity) => primary.withValues(alpha: opacity);
+  static Color blackWithOpacity(double opacity) => Colors.black.withValues(alpha: opacity);
+  static Color whiteWithOpacity(double opacity) => Colors.white.withValues(alpha: opacity);
 }

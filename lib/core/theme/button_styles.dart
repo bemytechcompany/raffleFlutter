@@ -6,7 +6,7 @@ class ButtonStyles {
   static ButtonStyle get greenActiveButton => ElevatedButton.styleFrom(
         backgroundColor: AppColors.buttonGreenBackground,
         foregroundColor: AppColors.buttonGreenForeground,
-        side: BorderSide(color: AppColors.buttonGreenBorder),
+        side: const BorderSide(color: AppColors.buttonGreenBorder),
         elevation: 2, // Añadir elevación para efecto más activo
       );
 
@@ -15,7 +15,7 @@ class ButtonStyles {
       ElevatedButton.styleFrom(
         backgroundColor: AppColors.buttonGreenBackground,
         foregroundColor: AppColors.buttonGreenForeground,
-        side: BorderSide(color: AppColors.buttonGreenBorder),
+        side: const BorderSide(color: AppColors.buttonGreenBorder),
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
@@ -27,7 +27,7 @@ class ButtonStyles {
       ElevatedButton.styleFrom(
         backgroundColor: AppColors.buttonGreenBackground,
         foregroundColor: AppColors.buttonGreenForeground,
-        side: BorderSide(color: AppColors.buttonGreenBorder),
+        side: const BorderSide(color: AppColors.buttonGreenBorder),
         elevation: 2,
         padding: padding,
       );
@@ -41,7 +41,7 @@ class ButtonStyles {
       ElevatedButton.styleFrom(
         backgroundColor: AppColors.buttonGreenBackground,
         foregroundColor: AppColors.buttonGreenForeground,
-        side: BorderSide(color: AppColors.buttonGreenBorder),
+        side: const BorderSide(color: AppColors.buttonGreenBorder),
         elevation: elevation,
         shape: radius != null
             ? RoundedRectangleBorder(

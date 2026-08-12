@@ -19,4 +19,8 @@ abstract class ParticipantRepository {
       {required int giveawayId, required int count});
 
   Future<Participant?> drawWinner(int giveawayId);
+
+  /// Borra ganadores, premios y preselección, y devuelve el sorteo a pendiente.
+  /// Los participantes se conservan.
+  Future<void> resetDraw(int giveawayId);
 }

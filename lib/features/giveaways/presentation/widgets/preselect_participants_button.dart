@@ -39,7 +39,7 @@ class PreselectParticipantsButton extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.buttonGreenBackground,
               foregroundColor: AppColors.buttonGreenForeground,
-              side: BorderSide(color: AppColors.buttonGreenBorder),
+              side: const BorderSide(color: AppColors.buttonGreenBorder),
             ),
             child: const Text('Preseleccionar'),
           ),
@@ -57,7 +57,7 @@ class PreselectParticipantsButton extends StatelessWidget {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.buttonGreenBackground,
         foregroundColor: AppColors.buttonGreenForeground,
-        side: BorderSide(color: AppColors.buttonGreenBorder),
+        side: const BorderSide(color: AppColors.buttonGreenBorder),
       ),
     );
   }

@@ -17,6 +17,7 @@ class ParticipantBloc extends Bloc<ParticipantEvent, ParticipantState> {
     on<DeleteParticipantsByGiveawayEvent>(_onDeleteParticipantsByGiveaway);
     on<PreselectParticipantsEvent>(_onPreselectParticipants);
     on<DrawWinnerEvent>(_onDrawWinner);
+    on<ResetGiveawayDrawEvent>(_onResetDraw);
   }
 
   Future<void> _onLoadParticipants(
@@ -108,13 +109,34 @@ class ParticipantBloc extends Bloc<ParticipantEvent, ParticipantState> {
   ) async {
     try {
       final winner = await useCases.drawWinner(event.giveawayId);
-      if (winner != null) {
-        emit(WinnerSelected(winner));
-      } else {
-        emit(
-            const ParticipantError('No hay participantes disponibles para sortear.'));
+
+      if (winner == null) {
+        emit(const ParticipantError(
+            'No hay participantes disponibles para sortear.'));
+        return;
       }
-      add(LoadParticipants(giveawayId: event.giveawayId)); // Recargar
+
+      // Se emite un único estado con el ganador y la lista ya actualizada, en
+      // vez de emitir el ganador y encadenar una recarga que lo reemplazaba.
+      final participants = await useCases.getParticipants(event.giveawayId);
+      emit(WinnerSelected(winner, participants));
+    } catch (e) {
+      emit(ParticipantError(e.toString()));
+    }
+  }
+
+  Future<void> _onResetDraw(
+    ResetGiveawayDrawEvent event,
+    Emitter<ParticipantState> emit,
+  ) async {
+    try {
+      await useCases.resetDraw(event.giveawayId);
+
+      // Se emite la lista ya recargada en vez de encadenar `LoadParticipants`:
+      // así la pantalla pasa del resultado viejo al nuevo en un solo estado,
+      // sin quedarse en `ParticipantLoading` por medio.
+      final participants = await useCases.getParticipants(event.giveawayId);
+      emit(ParticipantLoaded(participants));
     } catch (e) {
       emit(ParticipantError(e.toString()));
     }

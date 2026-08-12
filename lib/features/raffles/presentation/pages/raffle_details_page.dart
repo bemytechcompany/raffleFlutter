@@ -6,11 +6,10 @@ import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details
 import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details_event.dart';
 import 'package:raffle/features/raffles/presentation/bloc/details/raffle_details_state.dart';
 import 'package:raffle/features/raffles/presentation/bloc/raffle_bloc.dart';
-import 'package:raffle/features/raffles/presentation/bloc/raffle_event.dart'
-    as raffle_events;
+import 'package:raffle/features/raffles/presentation/bloc/raffle_event.dart';
+import 'package:raffle/features/raffles/presentation/bloc/trash/trash_bloc.dart';
 import 'package:raffle/features/raffles/presentation/widgets/status_modal.dart';
 import 'package:raffle/features/raffles/presentation/widgets/ticket_info_modal.dart';
-import 'package:raffle/features/raffles/presentation/widgets/ticket_modal.dart';
 import 'package:raffle/features/raffles/presentation/widgets/ticket_grid.dart';
 import 'package:raffle/features/raffles/presentation/widgets/financial_summary.dart';
 import 'package:raffle/features/raffles/presentation/pages/raffle_edit_page.dart';
@@ -72,9 +71,14 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
     context.read<RaffleDetailsBloc>().add(EditTicket(ticket));
   }
 
+  /// Envía la rifa a la papelera y vuelve a la lista.
+  ///
+  /// Se avisa a los dos blocs antes de salir: el listado tiene que dejar de
+  /// mostrarla y la papelera tiene que recogerla.
   void _handleDeleteRaffle() {
-    context.read<RaffleDetailsBloc>().add(DeleteRaffle(widget.raffleId));
-    Navigator.of(context).pop(); // vuelve a la lista
+    context.read<RaffleBloc>().add(MoveRaffleToTrash(widget.raffleId));
+    context.read<TrashBloc>().add(const LoadTrash());
+    Navigator.of(context).pop();
   }
 
   void _openTicketInfoModal(Ticket ticket) {
@@ -94,38 +98,37 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
     );
   }
 
-  void _openEditModal(Ticket ticket) {
-    if (raffle == null) return;
-    
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => TicketModal(
-        ticket: ticket,
-        raffle: raffle!,
-        onSubmit: (updatedTicket) {
-          Navigator.of(context).pop(); // Cerrar el modal
-          _handleTicketUpdate(updatedTicket);
-        },
-        onClose: () => Navigator.of(context).pop(),
+  /// Compartir necesita la lista completa de boletos, así que se pide a la
+  /// base en el momento en vez de mantenerla cargada en la pantalla.
+  Future<void> _openShareModal() async {
+    final current = raffle;
+    if (current == null) return;
+
+    final navigator = Navigator.of(context);
+    final tickets = await context.read<RaffleDetailsBloc>().loadAllTickets();
+    if (!mounted) return;
+
+    navigator.push(
+      MaterialPageRoute(
+        builder: (_) => RaffleSharePage(
+          raffle: current,
+          tickets: tickets,
+          currentPage: currentPage,
+        ),
       ),
     );
   }
 
-  void _openShareModal() {
-    if (raffle == null) return;
+  /// La lista de compradores solo necesita los boletos que tienen comprador.
+  Future<void> _openBuyersList(Raffle current) async {
+    final navigator = Navigator.of(context);
+    final tickets =
+        await context.read<RaffleDetailsBloc>().loadTicketsWithBuyers();
+    if (!mounted) return;
 
-    Navigator.push(
-      context,
+    navigator.push(
       MaterialPageRoute(
-        builder: (_) => RaffleSharePage(
-          raffle: raffle!,
-          tickets:
-              (context.read<RaffleDetailsBloc>().state as RaffleDetailsLoaded)
-                  .tickets,
-          currentPage: currentPage,
-        ),
+        builder: (_) => BuyersListPage(raffle: current, tickets: tickets),
       ),
     );
   }
@@ -142,7 +145,9 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
 
           if (state is RaffleDetailsLoaded) {
             raffle = state.raffle;
-            final tickets = state.tickets;
+            // Solo la página visible del grid; los totales vienen de los
+            // contadores que calculó SQLite.
+            final ticketPage = state.tickets;
 
             return Stack(
               children: [
@@ -199,16 +204,16 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                                     ),
                                   ),
                                   // Mostrar número ganador si existe
-                                  if (raffle!.winningNumber != null && raffle!.winningNumber!.isNotEmpty) ...[
+                                  if (raffle!.hasWinner) ...[
                                     const SizedBox(height: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                                       decoration: BoxDecoration(
-                                        color: AppColors.awardGold.withOpacity(0.9),
+                                        color: AppColors.awardGold.withValues(alpha: 0.9),
                                         borderRadius: BorderRadius.circular(12),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: AppColors.awardGold.withOpacity(0.3),
+                                            color: AppColors.awardGold.withValues(alpha: 0.3),
                                             blurRadius: 8,
                                             spreadRadius: 1,
                                           ),
@@ -247,29 +252,23 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                           children: [
                             FinancialSummary(
                               raffle: raffle!,
-                              tickets: tickets,
+                              counts: state.counts,
                             ),
                             BuyersSummary(
-                              tickets: tickets,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => BuyersListPage(
-                                      raffle: raffle!,
-                                      tickets: tickets,
-                                    ),
-                                  ),
-                                );
-                              },
+                              buyers: state.buyers,
+                              onTap: () => _openBuyersList(raffle!),
                             ),
                             TicketGrid(
-                              tickets: tickets,
+                              page: ticketPage,
                               raffle: raffle!,
                               onTap: _openTicketInfoModal,
                               showRandomButton: raffle!.status == 'active',
-                              onPageChanged: (page) =>
-                                  setState(() => currentPage = page),
+                              onPageChanged: (page) {
+                                currentPage = page;
+                                context
+                                    .read<RaffleDetailsBloc>()
+                                    .add(LoadTicketPage(page));
+                              },
                             ),
                             const SizedBox(height: 60)
                           ],
@@ -293,11 +292,11 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                         duration: const Duration(milliseconds: 100),
                         curve: Curves.easeOut,
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(opacity),
+                          color: AppColors.primary.withValues(alpha: opacity),
                           boxShadow: elevation > 0
                               ? [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
+                                    color: Colors.black.withValues(alpha: 0.2),
                                     blurRadius: elevation,
                                     offset: Offset(0, elevation / 2),
                                   ),
@@ -344,26 +343,29 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                                         icon: const Icon(Icons.edit),
                                         color: AppColors.text,
                                         onPressed: () async {
+                                          // Los blocs se resuelven antes de
+                                          // navegar: al volver del await el
+                                          // context puede estar desmontado.
+                                          final raffleBloc =
+                                              context.read<RaffleBloc>();
+                                          final detailsBloc =
+                                              context.read<RaffleDetailsBloc>();
+
                                           await Navigator.push(
                                             context,
                                             MaterialPageRoute(
                                               builder: (_) =>
                                                   BlocProvider.value(
-                                                value:
-                                                    context.read<RaffleBloc>(),
+                                                value: raffleBloc,
                                                 child: RaffleEditPage(
                                                     raffle: raffle!),
                                               ),
                                             ),
                                           );
-                                          if (mounted) {
-                                            context
-                                                .read<RaffleDetailsBloc>()
-                                                .add(
-                                                  LoadRaffleDetails(
-                                                      widget.raffleId),
-                                                );
-                                          }
+
+                                          detailsBloc.add(
+                                            LoadRaffleDetails(widget.raffleId),
+                                          );
                                         },
                                       ),
                                     ],
@@ -396,7 +398,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                       onPressed: () => setState(() => showDeleteConfirm = true),
                       icon: const Icon(Icons.delete, color: AppColors.text),
                       label: const Text(
-                        'Delete Raffle',
+                        'Eliminar Rifa',
                         style: TextStyle(color: AppColors.text),
                       ),
                     ),
@@ -411,11 +413,14 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                   AlertDialog(
                     backgroundColor: AppColors.backgroundModal,
                     title: const Text(
-                      'Confirm Deletion',
+                      'Eliminar Rifa',
                       style: TextStyle(color: AppColors.text),
                     ),
+                    // A diferencia de los sorteos, esto no borra nada de
+                    // verdad: manda la rifa a la papelera y se puede restaurar.
                     content: const Text(
-                      'Are you sure you want to delete this raffle?',
+                      '¿Seguro que quieres eliminar esta rifa? '
+                      'Se moverá a la papelera y podrás restaurarla desde allí.',
                       style: TextStyle(color: AppColors.textSecondary),
                     ),
                     actions: [
@@ -423,7 +428,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                         onPressed: () =>
                             setState(() => showDeleteConfirm = false),
                         child: const Text(
-                          'Cancel',
+                          'Cancelar',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       ),
@@ -433,7 +438,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
                           backgroundColor: AppColors.error,
                         ),
                         child: const Text(
-                          'Delete',
+                          'Eliminar',
                           style: TextStyle(color: AppColors.text),
                         ),
                       ),
@@ -454,7 +459,7 @@ class _RaffleDetailsPageState extends State<RaffleDetailsPage> {
 
           return const Center(
             child: Text(
-              'Something went wrong',
+              'Algo salió mal',
               style: TextStyle(color: AppColors.textSecondary),
             ),
           );

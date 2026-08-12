@@ -30,10 +30,21 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
   final _contactCtrl = TextEditingController();
   Map<String, String> _errors = {};
 
+  /// Ticket que se está mostrando, con los cambios ya aplicados.
+  ///
+  /// Al guardar no se cierra el modal: se pasa a la vista previa para poder
+  /// compartir la boleta con el estado nuevo, y para eso la previa tiene que
+  /// leer el ticket actualizado y no el que llegó por parámetro.
+  Ticket? _ticket;
+
+  /// Índice de la pestaña de vista previa.
+  static const int _previewTab = 0;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _ticket = widget.ticket;
     _status = widget.ticket?.status ?? 'available';
     
     // Inicializar los controladores de texto de forma segura para iOS
@@ -59,7 +70,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
           print('  Status: ${widget.ticket?.status}');
           print('  Buyer Name: ${widget.ticket?.buyerName}');
           print('  Buyer Contact: ${widget.ticket?.buyerContact}');
-          print('  Platform: ${defaultTargetPlatform}');
+          print('  Platform: $defaultTargetPlatform');
         }
         
         setState(() {
@@ -75,6 +86,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
     super.didUpdateWidget(oldWidget);
     // Actualizar los datos si el ticket cambió
     if (oldWidget.ticket != widget.ticket) {
+      _ticket = widget.ticket;
       setState(() {
         _status = widget.ticket?.status ?? 'available';
         _nameCtrl.text = widget.ticket?.buyerName ?? '';
@@ -164,15 +176,33 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
   }
 
   void _save() {
-    if (_validate()) {
-      final updatedTicket = widget.ticket!.copyWith(
-        status: _status,
-        buyerName: _status == 'available' ? null : _nameCtrl.text.trim(),
-        buyerContact: _status == 'available' ? null : _contactCtrl.text.trim(),
-      );
-      widget.onEdit(updatedTicket);
-      widget.onClose();
-    }
+    if (!_validate()) return;
+
+    final isReleasing = _status == 'available';
+    final updatedTicket = (_ticket ?? widget.ticket)!.copyWith(
+      status: _status,
+      buyerName: isReleasing ? null : _nameCtrl.text.trim(),
+      buyerContact: isReleasing ? null : _contactCtrl.text.trim(),
+    );
+
+    widget.onEdit(updatedTicket);
+
+    // El modal se queda abierto y salta a la vista previa: tras marcar un
+    // boleto como vendido o reservado lo normal es querer mandárselo al
+    // comprador ahí mismo, con el estado ya actualizado.
+    setState(() => _ticket = updatedTicket);
+    _tabController.animateTo(_previewTab);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isReleasing
+              ? 'Boleto liberado.'
+              : 'Boleto actualizado. Ya puedes compartirlo.',
+        ),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   String _getButtonText() {
@@ -190,8 +220,10 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
 
   Widget _buildStatusButton(String value, String label, IconData icon, Color color) {
     final isSelected = _status == value;
-    final isRaffleExpired = widget.raffle.status == 'expired';
-    final isDisabled = isRaffleExpired && (value == 'sold' || value == 'reserved');
+    // Se mira `isLocked`, no solo el estado: una rifa de lotería con número
+    // ganador ya fijado sigue en `active` y aun así no debe admitir ventas.
+    final isDisabled =
+        widget.raffle.isLocked && (value == 'sold' || value == 'reserved');
     
     return Padding(
       padding: EdgeInsets.only(bottom: _getSpacing(context, 12.0)),
@@ -209,7 +241,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
             end: Alignment.bottomRight,
           ) : isSelected ? LinearGradient(
             colors: [
-              color.withOpacity(0.8), 
+              color.withValues(alpha: 0.8), 
               color,
               _getStatusSecondaryColor(value),
             ],
@@ -226,19 +258,19 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
           borderRadius: BorderRadius.circular(20),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: color.withOpacity(0.4),
+              color: color.withValues(alpha: 0.4),
               blurRadius: 12,
               offset: const Offset(0, 6),
               spreadRadius: 2,
             ),
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ] : [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),
@@ -257,7 +289,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                   Container(
                     padding: EdgeInsets.all(_getSpacing(context, 6)),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(isSelected ? 0.2 : 0.1),
+                      color: Colors.white.withValues(alpha: isSelected ? 0.2 : 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
@@ -306,15 +338,15 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2),
-                  Theme.of(context).colorScheme.primaryContainer.withOpacity(0.05),
+                  Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.2),
+                  Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.05),
                 ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                 width: 1,
               ),
             ),
@@ -329,7 +361,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                         gradient: LinearGradient(
                           colors: [
                             Theme.of(context).colorScheme.primary,
-                            Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                            Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                           ],
                         ),
                         borderRadius: BorderRadius.circular(12),
@@ -353,16 +385,16 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                 ),
                 SizedBox(height: _getSpacing(context, 16)),
                 
-                // Mensaje informativo cuando la rifa está expirada
-                if (widget.raffle.status == 'expired') ...[
+                // Mensaje informativo cuando la rifa ya no admite ventas
+                if (widget.raffle.isLocked) ...[
                   Container(
                     padding: EdgeInsets.all(_getSpacing(context, 12)),
                     margin: EdgeInsets.only(bottom: _getSpacing(context, 16)),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.2),
+                      color: Colors.orange.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.orange.withOpacity(0.5),
+                        color: Colors.orange.withValues(alpha: 0.5),
                         width: 1,
                       ),
                     ),
@@ -376,7 +408,9 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                         SizedBox(width: _getSpacing(context, 12)),
                         Expanded(
                           child: Text(
-                            'Esta rifa ha finalizado. Solo se pueden liberar tickets, no vender ni reservar.',
+                            widget.raffle.hasWinner
+                                ? 'Esta rifa ya tiene número ganador. Solo se pueden liberar tickets, no vender ni reservar.'
+                                : 'Esta rifa no está activa. Solo se pueden liberar tickets, no vender ni reservar.',
                             style: TextStyle(
                               color: Colors.orange,
                               fontSize: _getFontSize(context, 13),
@@ -403,15 +437,15 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.3),
-                    Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.1),
+                    Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+                    Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+                  color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: 0.5),
                   width: 1,
                 ),
               ),
@@ -426,7 +460,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                           gradient: LinearGradient(
                             colors: [
                               Theme.of(context).colorScheme.secondary,
-                              Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                              Theme.of(context).colorScheme.secondary.withValues(alpha: 0.8),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(12),
@@ -460,7 +494,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -483,7 +517,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                           margin: EdgeInsets.all(_getSpacing(context, 8)),
                           padding: EdgeInsets.all(_getSpacing(context, 6)),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -527,7 +561,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -550,7 +584,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                           margin: EdgeInsets.all(_getSpacing(context, 8)),
                           padding: EdgeInsets.all(_getSpacing(context, 6)),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
@@ -607,13 +641,13 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                  color: _getStatusColor(_status).withOpacity(0.4),
+                  color: _getStatusColor(_status).withValues(alpha: 0.4),
                   blurRadius: 15,
                   offset: const Offset(0, 8),
                   spreadRadius: 2,
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 4,
                   offset: const Offset(0, 2),
                 ),
@@ -633,7 +667,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                         padding: EdgeInsets.all(_getSpacing(context, 6)),
                         margin: EdgeInsets.only(right: _getSpacing(context, 12)),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -691,7 +725,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
             gradient: LinearGradient(
               colors: [
                 const Color(0xFF1e1e1e),
-                const Color(0xFF1e1e1e).withOpacity(0.95),
+                const Color(0xFF1e1e1e).withValues(alpha: 0.95),
               ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -699,13 +733,13 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 blurRadius: 30,
                 offset: const Offset(0, 15),
                 spreadRadius: 5,
               ),
               BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                 blurRadius: 20,
                 offset: const Offset(0, 5),
               ),
@@ -719,8 +753,8 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
-                      Theme.of(context).colorScheme.primaryContainer.withOpacity(0.1),
+                      Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                      Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.1),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -730,7 +764,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                     topRight: Radius.circular(28),
                   ),
                   border: Border.all(
-                    color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                    color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                     width: 1,
                   ),
                 ),
@@ -746,7 +780,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                               gradient: LinearGradient(
                                 colors: [
                                   Theme.of(context).colorScheme.primary,
-                                  Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.8),
                                 ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
@@ -754,7 +788,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                               borderRadius: BorderRadius.circular(16),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
                                   blurRadius: 8,
                                   offset: const Offset(0, 4),
                                 ),
@@ -776,7 +810,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                                   style: TextStyle(
                                     fontSize: _getFontSize(context, 14),
                                     fontWeight: FontWeight.w500,
-                                    color: Colors.white.withOpacity(0.7),
+                                    color: Colors.white.withValues(alpha: 0.7),
                                   ),
                                 ),
                                 Text(
@@ -797,7 +831,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                     ),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.2),
+                        color: Colors.black.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: IconButton(
@@ -823,7 +857,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                   ),
                   border: Border(
                     bottom: BorderSide(
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
                       width: 1,
                     ),
                   ),
@@ -847,7 +881,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                       icon: Container(
                         padding: EdgeInsets.all(_getSpacing(context, 6)),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -861,7 +895,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                       icon: Container(
                         padding: EdgeInsets.all(_getSpacing(context, 6)),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+                          color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
@@ -891,7 +925,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                           gradient: LinearGradient(
                             colors: [
                               const Color(0xFF1e1e1e),
-                              Colors.grey[900]!.withOpacity(0.8),
+                              Colors.grey[900]!.withValues(alpha: 0.8),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
@@ -902,7 +936,9 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(1),
                             child: TicketExportWidget(
-                              ticket: widget.ticket!,
+                              // `_ticket`, no `widget.ticket`: tras guardar,
+                              // la previa debe mostrar el estado nuevo.
+                              ticket: _ticket!,
                               raffle: widget.raffle,
                             ),
                           ),
@@ -915,7 +951,7 @@ class _TicketInfoModalState extends State<TicketInfoModal> with TickerProviderSt
                           gradient: LinearGradient(
                             colors: [
                               const Color(0xFF1e1e1e),
-                              Colors.grey[900]!.withOpacity(0.8),
+                              Colors.grey[900]!.withValues(alpha: 0.8),
                             ],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,

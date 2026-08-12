@@ -87,11 +87,12 @@ class DrawWinnerEvent extends ParticipantEvent {
   List<Object?> get props => [giveawayId];
 }
 
-class WinnerSelected extends ParticipantState {
-  final Participant winner;
+/// Deshace el sorteo sin tocar la lista de participantes.
+class ResetGiveawayDrawEvent extends ParticipantEvent {
+  final int giveawayId;
 
-  const WinnerSelected(this.winner);
+  const ResetGiveawayDrawEvent({required this.giveawayId});
 
   @override
-  List<Object?> get props => [winner];
+  List<Object?> get props => [giveawayId];
 }
