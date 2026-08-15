@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:raffle/features/giveaways/presentation/pages/giveaway_list_page.dart';
 import 'package:raffle/features/raffles/presentation/bloc/trash/trash_bloc.dart';
+import '../core/updates/update_prompt.dart';
 import '../features/raffles/presentation/pages/about_page.dart';
 import '../features/raffles/presentation/pages/raffle_list_page.dart';
 import '../features/raffles/presentation/pages/trash_page.dart';
@@ -60,6 +61,14 @@ class _MainLayoutState extends State<MainLayout> {
     Future.microtask(() {
       if (!mounted) return;
       context.read<TrashBloc>().add(PurgeExpiredTrash());
+    });
+
+    // El aviso de actualización espera al primer frame: el diálogo necesita un
+    // `Navigator` ya montado, y la consulta a Play no debe competir con el
+    // arranque de la primera pantalla.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      maybePromptForUpdate(context);
     });
   }
 
