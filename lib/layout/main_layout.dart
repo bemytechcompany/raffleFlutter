@@ -1,10 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:raffle/features/giveaways/presentation/pages/giveaway_list_page.dart';
-import '../core/theme/app_colors.dart';
+import 'package:raffle/features/raffles/presentation/bloc/trash/trash_bloc.dart';
+import '../core/updates/update_prompt.dart';
+import '../features/raffles/presentation/pages/about_page.dart';
 import '../features/raffles/presentation/pages/raffle_list_page.dart';
 import '../features/raffles/presentation/pages/trash_page.dart';
-import '../features/raffles/presentation/pages/history_page.dart';
-import '../features/raffles/presentation/pages/settings_page.dart';
+
+/// Una entrada del menú inferior: título, icono y pantalla, juntos.
+///
+/// Antes eran tres listas paralelas y se habían desincronizado: había cinco
+/// pantallas registradas y solo tres botones, así que `HistoryPage` y
+/// `SettingsPage` no se podían abrir. Esas dos pantallas siguen en el
+/// proyecto, pendientes de enlazar.
+class _Destination {
+  final String title;
+  final IconData icon;
+  final Widget page;
+
+  const _Destination({
+    required this.title,
+    required this.icon,
+    required this.page,
+  });
+}
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -14,49 +33,76 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
+  static const List<_Destination> _destinations = [
+    _Destination(
+      title: 'Rifas',
+      icon: Icons.confirmation_number,
+      page: RaffleListPage(),
+    ),
+    _Destination(
+      title: 'Sorteos',
+      icon: Icons.card_giftcard,
+      page: GiveawaysListPage(),
+    ),
+    _Destination(
+      title: 'Papelera',
+      icon: Icons.delete,
+      page: TrashPage(),
+    ),
+  ];
+
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    RaffleListPage(),
-    GiveawaysListPage(),
-    TrashPage(),
-    HistoryPage(),
-    SettingsPage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    // Mantenimiento de arranque: vacía lo que lleve más de un mes en la
+    // papelera para que no crezca sin límite.
+    Future.microtask(() {
+      if (!mounted) return;
+      context.read<TrashBloc>().add(PurgeExpiredTrash());
+    });
 
-  final List<String> _titles = [
-    'Rifas',
-    'Sorteos',
-    'Papelera',
-    'History',
-    'Settings',
-  ];
+    // El aviso de actualización espera al primer frame: el diálogo necesita un
+    // `Navigator` ya montado, y la consulta a Play no debe competir con el
+    // arranque de la primera pantalla.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      maybePromptForUpdate(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final destination = _destinations[_currentIndex];
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-        backgroundColor: Colors.black,
-        elevation: 0,
+        title: Text(destination.title),
+        actions: [
+          // En la barra principal y no dentro de ajustes: la política de
+          // privacidad tiene que ser alcanzable desde cualquier pestaña para
+          // pasar la revisión de las tiendas.
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'Acerca de',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AboutPage()),
+            ),
+          ),
+        ],
       ),
-      body: _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [for (final d in _destinations) d.page],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        backgroundColor: Colors.black,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: Colors.grey,
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.card_giftcard), label: "Rifas"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.card_giftcard), label: "Sorteos"),
-          BottomNavigationBarItem(icon: Icon(Icons.delete), label: "Papelera"),
-          //BottomNavigationBarItem(icon: Icon(Icons.history), label: "History"),
-          //BottomNavigationBarItem(
-          //icon: Icon(Icons.settings), label: "Settings"),
+        items: [
+          for (final d in _destinations)
+            BottomNavigationBarItem(icon: Icon(d.icon), label: d.title),
         ],
       ),
     );

@@ -1,5 +1,7 @@
 plugins {
     id "com.android.application"
+    // KGP explícito a propósito: ver la nota de `android.builtInKotlin` en
+    // gradle.properties.
     id "kotlin-android"
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id "dev.flutter.flutter-gradle-plugin"
@@ -7,49 +9,64 @@ plugins {
 
 def keystoreProperties = new Properties()
 def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
+def hasSigningConfig = keystorePropertiesFile.exists()
+if (hasSigningConfig) {
     keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 }
 
 android {
     namespace = 'raffle.com.raffle'
-    compileSdk = 35
+    // 36 lo exige share_plus, y desde el 31/08/2026 Play no acepta
+    // actualizaciones por debajo de ese nivel de API.
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_11
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "raffle.com.raffle"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // Explícitos en vez de heredar de Flutter: Play exige un targetSdk
+        // concreto y así el build no cambia al actualizar el SDK.
+        minSdk = 24
+        // Android 16. Obligatorio para publicar actualizaciones desde el
+        // 31/08/2026. Activa edge-to-edge sin posibilidad de desactivarlo: los
+        // insets los absorbe el Scaffold de `main_layout` (AppBar +
+        // BottomNavigationBar) y, en la única pantalla que dibuja su propia
+        // cabecera, el SafeArea de `raffle_details_page`.
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
-    signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
+    // Solo se declara la firma de release si existe `key.properties`; si no,
+    // Gradle fallaba con un `storeFile` nulo.
+    if (hasSigningConfig) {
+        signingConfigs {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-            minifyEnabled true
-            shrinkResources true
+            // Sin clave de firma se usa la de depuración, para que `flutter
+            // build apk` siga funcionando en una máquina sin credenciales.
+            signingConfig = hasSigningConfig
+                ? signingConfigs.release
+                : signingConfigs.debug
+            minifyEnabled = true
+            shrinkResources = true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }

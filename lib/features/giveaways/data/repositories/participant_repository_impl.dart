@@ -65,4 +65,9 @@ class ParticipantRepositoryImpl implements ParticipantRepository {
   Future<Participant?> drawWinner(int giveawayId) {
     return datasource.drawWinner(giveawayId);
   }
+
+  @override
+  Future<void> resetDraw(int giveawayId) {
+    return datasource.resetDraw(giveawayId);
+  }
 }

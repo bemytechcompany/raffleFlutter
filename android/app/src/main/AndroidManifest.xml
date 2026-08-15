@@ -1,10 +1,20 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- Permisos heredados de Android 12 y anteriores. Desde Android 13 no
+         conceden nada y Play los cuestiona en la revisión, así que se acotan
+         con maxSdkVersion. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <!-- Android 13+ NO lleva READ_MEDIA_IMAGES a propósito: Play solo permite ese
+         permiso si los selectores del sistema no bastan, y aquí sí bastan.
+         `image_picker` abre el Photo Picker de Android (ACTION_PICK_IMAGES), que
+         devuelve la imagen elegida sin conceder acceso a la galería completa, y
+         `gal` guarda vía MediaStore con scoped storage. Ninguno de los dos
+         plugins declara permisos por su cuenta. -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="raffle"
+        android:label="Raffle"
         android:name="${applicationName}"
         android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">

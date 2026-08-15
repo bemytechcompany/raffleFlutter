@@ -1,12 +1,15 @@
 import 'dart:ui' as ui;
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:raffle/core/money/money.dart';
 import 'package:flutter/rendering.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/foundation.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import 'package:intl/intl.dart';
+import 'package:gal/gal.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/ticket.dart';
@@ -31,6 +34,8 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
   bool isProcessing = false;
 
   Future<void> _exportTicket({required bool share}) async {
+    if (isProcessing) return; // Prevenir múltiples ejecuciones
+    
     try {
       setState(() => isProcessing = true);
       final boundary = repaintKey.currentContext!.findRenderObject()
@@ -39,33 +44,76 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       final pngBytes = byteData!.buffer.asUint8List();
 
-      final tempDir = await getTemporaryDirectory();
-      final file = await File('${tempDir.path}/ticket.png').create();
-      await file.writeAsBytes(pngBytes);
-
       if (share) {
-        await Share.shareXFiles([XFile(file.path)],
-            text: '¡Gracias por participar!');
+        final tempDir = await getTemporaryDirectory();
+        final file = await File('${tempDir.path}/ticket.png').create();
+        await file.writeAsBytes(pngBytes);
+        
+        try {
+          if (kDebugMode) {
+            print('📱 TicketExport - Iniciando compartir en ${Platform.isIOS ? 'iOS' : 'Android'}');
+          }
+          
+          // Timeout de seguridad para iOS
+          if (Platform.isIOS) {
+            await Future.any([
+              SharePlus.instance.share(ShareParams(
+                  files: [XFile(file.path)], text: '¡Gracias por participar!')),
+              Future.delayed(const Duration(seconds: 10)), // Timeout de 10 segundos
+            ]);
+          } else {
+            await SharePlus.instance.share(ShareParams(
+                  files: [XFile(file.path)], text: '¡Gracias por participar!'));
+          }
+          
+          if (kDebugMode) {
+            print('📱 TicketExport - Compartir completado');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('📱 TicketExport - Error al compartir: $e');
+          }
+        } finally {
+          // Resetear el estado siempre, sin importar la plataforma
+          if (mounted) {
+            if (kDebugMode) {
+              print('📱 TicketExport - Reseteando estado isProcessing = false');
+            }
+            setState(() => isProcessing = false);
+          }
+        }
       } else {
-        if (await Permission.storage.request().isGranted) {
-          final directory = await getExternalStorageDirectory();
-          final path = '${directory!.path}/ticket_${widget.ticket.number}.png';
-          final saved = await File(path).writeAsBytes(pngBytes);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Imagen guardada: ${saved.path}')),
-          );
+        final hasAccess = await Gal.hasAccess(toAlbum: true);
+        if (!hasAccess) {
+           await Gal.requestAccess(toAlbum: true);
+        }
+
+        if (await Gal.hasAccess(toAlbum: true)){
+           await Gal.putImageBytes(pngBytes, album: 'RaffleTickets');
+           if (mounted) {
+             ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(content: Text('Imagen guardada en la galería')),
+             );
+           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Permiso de almacenamiento denegado')),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Permiso de galería denegado')),
+            );
+          }
+        }
+        
+        if (mounted) {
+          setState(() => isProcessing = false);
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al exportar: $e')),
-      );
-    } finally {
-      setState(() => isProcessing = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al exportar: $e')),
+        );
+        setState(() => isProcessing = false);
+      }
     }
   }
 
@@ -74,11 +122,6 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
     final ticket = widget.ticket;
     final raffle = widget.raffle;
     final dateFormat = DateFormat('dd/MM/yyyy');
-    final currencyFormat = NumberFormat.currency(
-      symbol: '\$',
-      decimalDigits: 2,
-      locale: 'es',
-    );
 
     return Column(
       children: [
@@ -158,7 +201,7 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
                             style: const TextStyle(color: Colors.white54),
                           ),
                           Text(
-                            'Precio: ${currencyFormat.format(raffle.price)}',
+                            'Precio: ${Money.format(raffle.priceMinor)}',
                             style: const TextStyle(color: Colors.white54),
                           ),
                         ],
@@ -220,6 +263,11 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
                   onPressed: () => _exportTicket(share: true),
                   icon: const Icon(Icons.share),
                   label: const Text('WhatsApp'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.buttonGreenBackground,
+                    foregroundColor: AppColors.buttonGreenForeground,
+                    side: const BorderSide(color: AppColors.buttonGreenBorder),
+                  ),
                 ),
               ),
               const SizedBox(width: 4),
@@ -228,13 +276,18 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
                   onPressed: () => _exportTicket(share: false),
                   icon: const Icon(Icons.download),
                   label: const Text('Descargar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.buttonGreenBackground,
+                    foregroundColor: AppColors.buttonGreenForeground,
+                    side: const BorderSide(color: AppColors.buttonGreenBorder),
+                  ),
                 ),
               ),
             ],
           )
         else
           const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+            padding: EdgeInsets.symmetric(vertical: 5),
             child: Center(child: CircularProgressIndicator()),
           ),
       ],

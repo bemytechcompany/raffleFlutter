@@ -1,5 +1,8 @@
+import 'package:raffle/core/db/app_database.dart';
+
 import '../../domain/entities/giveaway.dart';
 
+/// Traducción entre la tabla `giveaways` y la entidad [Giveaway].
 class GiveawayModel extends Giveaway {
   GiveawayModel({
     required super.id,
@@ -13,26 +16,14 @@ class GiveawayModel extends Giveaway {
 
   factory GiveawayModel.fromMap(Map<String, dynamic> map) {
     return GiveawayModel(
-      id: map['id'],
-      name: map['name'],
-      description: map['description'],
-      drawDate: DateTime.parse(map['drawDate']),
-      status: map['status'],
-      createdAt: DateTime.parse(map['createdAt']),
-      updatedAt: DateTime.parse(map['updatedAt']),
+      id: map['id'] as int?,
+      name: map['name'] as String,
+      description: (map['description'] as String?) ?? '',
+      drawDate: parseDbDate(map['draw_date'] as String),
+      status: map['status'] as String,
+      createdAt: parseDbDate(map['created_at'] as String),
+      updatedAt: parseDbDate(map['updated_at'] as String),
     );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'drawDate': drawDate.toIso8601String(),
-      'status': status,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt.toIso8601String(),
-    };
   }
 
   factory GiveawayModel.fromEntity(Giveaway giveaway) {
@@ -45,6 +36,18 @@ class GiveawayModel extends Giveaway {
       createdAt: giveaway.createdAt,
       updatedAt: giveaway.updatedAt,
     );
+  }
+
+  /// Columnas para `insert`/`update`. Sin `id`: lo asigna SQLite.
+  Map<String, dynamic> toColumns() {
+    return {
+      'name': name,
+      'description': description,
+      'draw_date': drawDate.toDbString(),
+      'status': status,
+      'created_at': createdAt.toDbString(),
+      'updated_at': updatedAt.toDbString(),
+    };
   }
 
   Giveaway toEntity() {

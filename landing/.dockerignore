@@ -1,0 +1,21 @@
+# Dependencias instaladas localmente
+node_modules
+
+# Archivos temporales / cachés
+npm-debug.log
+.next
+out
+.cache
+
+# Archivos de entorno locales
+.env
+.env.*
+
+# Archivos de control de versiones
+.git
+.gitignore
+
+# Archivos específicos de IDE
+.vscode
+.idea
+.DS_Store 

@@ -1,123 +1,161 @@
+import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
+import '../../../domain/entities/ticket.dart';
 import '../../../domain/repositories/raffle_repository.dart';
-import '../../../data/models/raffle_model.dart';
-import '../../../data/models/ticket_model.dart';
 import 'raffle_details_event.dart';
 import 'raffle_details_state.dart';
 
+/// Estado de la pantalla de detalle.
+///
+/// La cabecera (rifa y contadores) se calcula en SQL y los boletos se piden
+/// por páginas: una rifa de lotería de cuatro dígitos tiene diez mil y
+/// cargarlos todos para pintar cien era el cuello de botella de la pantalla.
 class RaffleDetailsBloc extends Bloc<RaffleDetailsEvent, RaffleDetailsState> {
   final RaffleRepository repository;
 
+  int? _raffleId;
+
   RaffleDetailsBloc(this.repository) : super(RaffleDetailsInitial()) {
-    on<LoadRaffleDetails>((event, emit) async {
-      emit(RaffleDetailsLoading());
-      try {
-        print('🟢 Paso 1: obteniendo resultado...');
-        final result = await repository.getRaffleWithTickets(event.raffleId);
-        if (result == null) {
-          emit(const RaffleDetailsError('Raffle not found.'));
-          return;
-        }
+    on<LoadRaffleDetails>(_onLoad);
 
-        print('🟢 Paso 2: convirtiendo raffle...');
-        final raffleMap = Map<String, dynamic>.from(result['raffle']);
-        print('raffleMap: $raffleMap');
+    // Cambiar de página rápido no debe encolar consultas: nos quedamos con la
+    // última pedida.
+    on<LoadTicketPage>(_onLoadTicketPage, transformer: restartable());
 
-        print('🟢 Paso 3: convirtiendo tickets...');
-        final ticketsList = List<Map<String, dynamic>>.from(result['tickets']);
-        print('ticketsList: $ticketsList');
+    on<EditTicket>(_onEditTicket);
+    on<ChangeRaffleStatus>(_onChangeStatus);
+    on<SetWinningNumber>(_onSetWinningNumber);
+    on<ResetDraw>(_onResetDraw);
+  }
 
-        print('🟢 Paso 4: creando entidad raffle...');
-        final raffle = RaffleModel.fromMap(raffleMap).toEntity();
-        print('🟢 raffle creado: ${raffle.id} - ${raffle.name}');
+  Future<void> _onLoad(
+      LoadRaffleDetails event, Emitter<RaffleDetailsState> emit) async {
+    _raffleId = event.raffleId;
+    emit(RaffleDetailsLoading());
 
-        print('🟢 Paso 5: creando entidades tickets...');
-        final tickets = ticketsList.map((t) {
-          print('➡️ Ticket map: $t');
-          final model = TicketModel.fromMap(t);
-          print('✅ TicketModel creado: ${model.id} (${model.number})');
-          return model.toEntity();
-        }).toList();
-
-        print('🟢 Paso 6: emitiendo estado loaded...');
-        emit(RaffleDetailsLoaded(raffle: raffle, tickets: tickets));
-      } catch (e, stack) {
-        print("❌ ERROR: $e");
-        print("📍 STACK TRACE:\n$stack");
-        emit(RaffleDetailsError(e.toString()));
+    try {
+      final details = await repository.getRaffleDetails(event.raffleId);
+      if (details == null) {
+        emit(const RaffleDetailsError('La rifa ya no existe.'));
+        return;
       }
-    });
 
-    on<ChangeRaffleStatus>((event, emit) async {
-      try {
-        await repository.updateRaffleStatus(event.raffleId, event.newStatus);
-        add(LoadRaffleDetails(event.raffleId));
-      } catch (e) {
-        print("hola 1");
+      final tickets = await repository.getTicketPage(event.raffleId);
+      emit(RaffleDetailsLoaded(details: details, tickets: tickets));
+    } catch (e) {
+      emit(RaffleDetailsError(e.toString()));
+    }
+  }
 
-        emit(RaffleDetailsError(e.toString()));
+  Future<void> _onLoadTicketPage(
+      LoadTicketPage event, Emitter<RaffleDetailsState> emit) async {
+    final current = state;
+    final raffleId = _raffleId;
+    if (current is! RaffleDetailsLoaded || raffleId == null) return;
+
+    emit(current.copyWith(loadingTickets: true));
+
+    try {
+      final tickets =
+          await repository.getTicketPage(raffleId, page: event.page);
+      emit(current.copyWith(tickets: tickets, loadingTickets: false));
+    } catch (e) {
+      emit(RaffleDetailsError(e.toString()));
+    }
+  }
+
+  /// Sortea el boleto ganador entre **todos** los de la rifa.
+  ///
+  /// Es una consulta, no una transición de estado: quien llama enseña el
+  /// número y solo si se confirma dispara [SetWinningNumber]. Por eso es un
+  /// método y no un evento.
+  Future<Ticket?> pickWinningTicket() async {
+    final raffleId = _raffleId;
+    if (raffleId == null) return null;
+    return repository.pickWinningTicket(raffleId);
+  }
+
+  /// Todos los boletos de la rifa.
+  ///
+  /// Solo para compartir y exportar, que necesitan la lista entera. El resto
+  /// de la pantalla trabaja por páginas.
+  Future<List<Ticket>> loadAllTickets() async {
+    final raffleId = _raffleId;
+    if (raffleId == null) return const [];
+    return repository.getAllTickets(raffleId);
+  }
+
+  /// Solo los boletos que tienen comprador, para la lista de compradores.
+  Future<List<Ticket>> loadTicketsWithBuyers() async {
+    final raffleId = _raffleId;
+    if (raffleId == null) return const [];
+    return repository.getTicketsWithBuyers(raffleId);
+  }
+
+  Future<void> _onEditTicket(
+      EditTicket event, Emitter<RaffleDetailsState> emit) async {
+    await _mutate(emit, () => repository.updateTicket(event.ticket));
+  }
+
+  Future<void> _onChangeStatus(
+      ChangeRaffleStatus event, Emitter<RaffleDetailsState> emit) async {
+    await _mutate(
+      emit,
+      () => repository.updateRaffleStatus(event.raffleId, event.newStatus),
+    );
+  }
+
+  Future<void> _onSetWinningNumber(
+      SetWinningNumber event, Emitter<RaffleDetailsState> emit) async {
+    await _mutate(
+      emit,
+      () => repository.setWinningNumberAndFinishRaffle(
+          event.raffleId, event.winningNumber),
+    );
+  }
+
+  Future<void> _onResetDraw(
+      ResetDraw event, Emitter<RaffleDetailsState> emit) async {
+    await _mutate(emit, () => repository.resetDraw(event.raffleId));
+  }
+
+  /// Aplica un cambio y refresca cabecera y página actual sin volver al
+  /// spinner de pantalla completa.
+  Future<void> _mutate(
+    Emitter<RaffleDetailsState> emit,
+    Future<void> Function() action,
+  ) async {
+    final current = state;
+    final raffleId = _raffleId;
+
+    // Antes se salía con un `return` mudo. Si el evento llegaba a un bloc sin
+    // rifa cargada —por ejemplo desde un diálogo montado en el Navigator raíz,
+    // que resuelve otro provider— no se escribía nada y la pantalla se quedaba
+    // igual, sin pista de que el sorteo no había ocurrido.
+    if (current is! RaffleDetailsLoaded || raffleId == null) {
+      emit(const RaffleDetailsError(
+        'No hay ninguna rifa cargada en esta pantalla.',
+      ));
+      return;
+    }
+
+    try {
+      await action();
+
+      final details = await repository.getRaffleDetails(raffleId);
+      if (details == null) {
+        emit(const RaffleDetailsError('La rifa ya no existe.'));
+        return;
       }
-    });
 
-    on<EditTicket>((event, emit) async {
-      try {
-        final currentState = state;
-        if (currentState is RaffleDetailsLoaded) {
-          final raffleId = currentState.raffle.id;
-          if (raffleId == null) {
-            emit(const RaffleDetailsError('Invalid raffle ID.'));
-            return;
-          }
-
-          print('🔄 Iniciando actualización del ticket:');
-          print('ID del ticket: ${event.ticket.id}');
-          print('Número del ticket: ${event.ticket.number}');
-          print('Estado: ${event.ticket.status}');
-          print('Comprador: ${event.ticket.buyerName}');
-          print('Contacto: ${event.ticket.buyerContact}');
-
-          // Actualizar el ticket
-          await repository.updateTicket(event.ticket);
-          print('✅ Ticket actualizado en la base de datos');
-
-          // Recargar los datos
-          print('🔄 Recargando datos del raffle...');
-          final result = await repository.getRaffleWithTickets(raffleId);
-          if (result == null) {
-            print('❌ No se encontró el raffle después de la actualización');
-            emit(const RaffleDetailsError('Raffle not found after update.'));
-            return;
-          }
-
-          final raffleMap = Map<String, dynamic>.from(result['raffle']);
-          final ticketsList = List<Map<String, dynamic>>.from(result['tickets']);
-          
-          final raffle = RaffleModel.fromMap(raffleMap).toEntity();
-          final tickets = ticketsList.map((t) {
-            final ticket = TicketModel.fromMap(t).toEntity();
-            print('📋 Ticket recargado: ${ticket.id} - Estado: ${ticket.status} - Comprador: ${ticket.buyerName}');
-            return ticket;
-          }).toList();
-          
-          print('✅ Datos recargados correctamente');
-          emit(RaffleDetailsLoaded(raffle: raffle, tickets: tickets));
-        }
-      } catch (e, stack) {
-        print("❌ Error al actualizar ticket: $e");
-        print("📍 Stack trace:\n$stack");
-        emit(RaffleDetailsError(e.toString()));
-      }
-    });
-
-    on<DeleteRaffle>((event, emit) async {
-      try {
-        await repository.deleteRaffleAndTickets(event.raffleId);
-        emit(RaffleDetailsInitial());
-      } catch (e) {
-        print("hola 3");
-
-        emit(RaffleDetailsError(e.toString()));
-      }
-    });
+      final tickets = await repository.getTicketPage(
+        raffleId,
+        page: current.tickets.page,
+      );
+      emit(RaffleDetailsLoaded(details: details, tickets: tickets));
+    } catch (e) {
+      emit(RaffleDetailsError(e.toString()));
+    }
   }
 }

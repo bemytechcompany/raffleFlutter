@@ -48,6 +48,21 @@ class GiveawayRepositoryImpl implements GiveawayRepository {
   }
 
   @override
+  Future<void> updateGiveaway({
+    required int giveawayId,
+    required String name,
+    required String description,
+    required DateTime drawDate,
+  }) {
+    return datasource.updateGiveaway(
+      id: giveawayId,
+      name: name,
+      description: description,
+      drawDate: drawDate,
+    );
+  }
+
+  @override
   Future<void> deleteGiveaway(int id) {
     return datasource.deleteGiveaway(id);
   }

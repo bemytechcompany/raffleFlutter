@@ -1,25 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Para formateo de números
-import '../../domain/entities/raffle.dart';
-import '../../domain/entities/ticket.dart';
+import 'package:intl/intl.dart'; // Para formateo de porcentajes
 
+import 'package:raffle/core/money/money.dart';
+import '../../domain/entities/raffle.dart';
+import '../../domain/entities/ticket_counts.dart';
+
+/// Resumen de dinero de una rifa.
+///
+/// Recibe contadores, no la lista de boletos: los cuenta SQLite y así la
+/// pantalla no depende de cuántos boletos tenga la rifa.
 class FinancialSummary extends StatelessWidget {
   final Raffle raffle;
-  final List<Ticket> tickets;
+  final TicketCounts counts;
 
   const FinancialSummary({
     super.key,
     required this.raffle,
-    required this.tickets,
+    required this.counts,
   });
 
-  // Formateadores para mostrar los números con mejor formato
-  NumberFormat get currencyFormat => NumberFormat.currency(
-        symbol: '\$',
-        decimalDigits: 2,
-        locale: 'es',
-      );
-  
   NumberFormat get percentFormat => NumberFormat.decimalPercentPattern(
         decimalDigits: 1,
         locale: 'es',
@@ -27,19 +26,11 @@ class FinancialSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sold = tickets.where((t) => t.status == 'sold').length;
-    final reserved = tickets.where((t) => t.status == 'reserved').length;
-    final available = tickets.where((t) => t.status == 'available').length;
-
-    final collected = sold * raffle.price;
-    final pending = reserved * raffle.price;
-    final remaining = available * raffle.price;
-    final total = raffle.totalTickets * raffle.price;
-
-    final totalTickets = raffle.totalTickets.toDouble();
-    final percentSold = sold / totalTickets;
-    final percentReserved = reserved / totalTickets;
-    final percentAvailable = available / totalTickets;
+    // Todo en unidades mínimas: aritmética entera, sin error de redondeo.
+    final collected = counts.collectedMinor(raffle.priceMinor);
+    final pending = counts.reservedMinor(raffle.priceMinor);
+    final remaining = counts.remainingMinor(raffle.priceMinor);
+    final total = raffle.goalMinor;
 
     return Container(
       decoration: BoxDecoration(
@@ -80,13 +71,14 @@ class FinancialSummary extends StatelessWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFF383838),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Text(
-                  '${raffle.totalTickets} tickets',
+                  '${raffle.totalTickets} Tickets',
                   style: const TextStyle(
                     color: Colors.white60,
                     fontSize: 12,
@@ -95,27 +87,17 @@ class FinancialSummary extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _summaryBox('Cobrado', collected, percentSold, const Color(0xFF00E676)),
-              _summaryBox('Reservado', pending, percentReserved, const Color(0xFFFFD54F)),
-              _summaryBox('Pendiente', remaining, percentAvailable, const Color(0xFF9E9E9E)),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _buildProgressBar(percentSold, percentReserved, percentAvailable),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Progreso: ${percentFormat.format(percentSold + percentReserved)}',
-                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              const Text(
+                'Meta De Ventas: ',
+                style: TextStyle(
+                  color: Colors.white60,
+                  fontSize: 14,
+                ),
               ),
               Text(
-                'Total: ${currencyFormat.format(total)}',
+                Money.format(total),
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
@@ -124,12 +106,57 @@ class FinancialSummary extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _summaryBox('Cobrado', collected, counts.soldRatio,
+                  const Color(0xFF00E676)),
+              _summaryBox('Reservado', pending, counts.reservedRatio,
+                  const Color(0xFFFFD54F)),
+              _summaryBox('Pendiente', remaining, counts.availableRatio,
+                  const Color(0xFF9E9E9E)),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Expanded(child: _buildProgressBar()),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  percentFormat.format(counts.committedRatio),
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total ventas: ${Money.format(collected + pending)}',
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _summaryBox(String label, double value, double percent, Color color) {
+  Widget _summaryBox(
+      String label, int valueMinor, double percent, Color color) {
     return Column(
       children: [
         Container(
@@ -149,7 +176,7 @@ class FinancialSummary extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Text(
-          currencyFormat.format(value),
+          Money.format(valueMinor),
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -182,11 +209,7 @@ class FinancialSummary extends StatelessWidget {
     }
   }
 
-  Widget _buildProgressBar(
-    double percentSold,
-    double percentReserved,
-    double percentAvailable,
-  ) {
+  Widget _buildProgressBar() {
     return Container(
       height: 10,
       decoration: BoxDecoration(
@@ -195,19 +218,23 @@ class FinancialSummary extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _progressSegment(percentSold, const Color(0xFF00E676)),
-          _progressSegment(percentReserved, const Color(0xFFFFD54F)),
-          _progressSegment(percentAvailable, const Color(0xFF9E9E9E).withAlpha(77)),
+          _progressSegment(counts.soldRatio, const Color(0xFF00E676)),
+          _progressSegment(counts.reservedRatio, const Color(0xFFFFD54F)),
+          _progressSegment(
+              counts.availableRatio, const Color(0xFF9E9E9E).withAlpha(77)),
         ],
       ),
     );
   }
 
   Widget _progressSegment(double percent, Color color) {
-    if (percent <= 0) return const SizedBox.shrink();
+    // `flex` tiene que ser un entero positivo: descartamos también NaN e
+    // infinitos por si el porcentaje llegara mal calculado.
+    if (!percent.isFinite || percent <= 0) return const SizedBox.shrink();
 
     return Expanded(
-      flex: (percent * 1000).round(), // Multiplicamos por 1000 para mejor precisión
+      // Multiplicamos por 1000 para no perder precisión al redondear.
+      flex: (percent * 1000).round(),
       child: Container(
         decoration: BoxDecoration(
           color: color,

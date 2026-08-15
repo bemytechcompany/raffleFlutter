@@ -1,102 +1,272 @@
-import 'dart:io';
-import 'package:path/path.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+
+import 'package:raffle/core/db/app_database.dart';
 import '../models/raffle_model.dart';
+import '../models/ticket_model.dart';
 
+/// Filtro reutilizable para las consultas del listado.
+typedef _Filter = ({String where, List<Object?> args});
+
+/// Consultas sobre las tablas `raffles` y `tickets`.
+///
+/// Todo lo que puede resolver SQLite (contar, filtrar, ordenar, paginar) se
+/// resuelve en SQL: la app puede tener rifas de diez mil boletos y traerlos a
+/// memoria para contarlos no escala.
+///
+/// Las rifas se borran de forma suave: `deleted_at` marca las que están en la
+/// papelera.
 class RaffleLocalDatasource {
-  static final RaffleLocalDatasource instance = RaffleLocalDatasource._internal();
-  static Database? _database;
+  final DatabaseProvider _databaseProvider;
 
-  RaffleLocalDatasource._internal();
+  RaffleLocalDatasource({DatabaseProvider? databaseProvider})
+      : _databaseProvider =
+            databaseProvider ?? (() => AppDatabase.instance.database);
 
-  Future<Database> get database async {
-    if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
-  }
+  static final RaffleLocalDatasource instance = RaffleLocalDatasource();
 
-  Future<Database> _initDatabase() async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path, 'raffle.db');
+  Future<Database> get _db => _databaseProvider();
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _onCreate,
+  // --------------------------------------------------------------------
+  // Listado
+  // --------------------------------------------------------------------
+
+  /// Rifas con sus contadores de boletos resueltos por SQLite.
+  ///
+  /// Devuelve una fila por rifa con cuántos boletos hay vendidos, reservados y
+  /// disponibles, sin traer ni un solo boleto a memoria.
+  Future<List<Map<String, dynamic>>> getRaffleSummaries({
+    bool inTrash = false,
+    String? search,
+    String? status,
+    int? limit,
+    int? offset,
+  }) async {
+    final db = await _db;
+    final filter = _raffleFilter(
+      inTrash: inTrash,
+      search: search,
+      status: status,
+    );
+    final orderColumn = inTrash ? 'r.deleted_at' : 'r.created_at';
+
+    return db.rawQuery(
+      '''
+      SELECT r.*,
+             COALESCE(SUM(CASE WHEN t.status = 'sold'      THEN 1 ELSE 0 END), 0) AS sold_count,
+             COALESCE(SUM(CASE WHEN t.status = 'reserved'  THEN 1 ELSE 0 END), 0) AS reserved_count,
+             COALESCE(SUM(CASE WHEN t.status = 'available' THEN 1 ELSE 0 END), 0) AS available_count
+      FROM raffles r
+      LEFT JOIN tickets t ON t.raffle_id = r.id
+      WHERE ${filter.where}
+      GROUP BY r.id
+      ORDER BY $orderColumn DESC
+      ${limit == null ? '' : 'LIMIT ? OFFSET ?'}
+      ''',
+      [...filter.args, if (limit != null) limit, if (limit != null) offset ?? 0],
     );
   }
 
-  Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE raffles (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        lottery_number TEXT NOT NULL,
-        price REAL NOT NULL,
-        total_tickets INTEGER NOT NULL,
-        status TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL,
-        date TEXT NOT NULL,
-        image_path TEXT
-      )
-    ''');
-
-    await db.execute('''
-      CREATE TABLE tickets (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        raffle_id INTEGER NOT NULL,
-        number INTEGER NOT NULL,
-        status TEXT NOT NULL,
-        buyer_name TEXT,
-        buyer_contact TEXT,
-        FOREIGN KEY (raffle_id) REFERENCES raffles (id) ON DELETE CASCADE
-      )
-    ''');
-  }
-
-  Future<int> insertRaffle({
-    required String name,
-    required String lotteryNumber,
-    required double price,
-    required int totalTickets,
-    required DateTime date,
-    String? imagePath,
+  /// Cuántas rifas cumplen el filtro. Necesario para paginar sin cargarlas.
+  Future<int> countRaffles({
+    bool inTrash = false,
+    String? search,
+    String? status,
   }) async {
-    final db = await database;
-    final now = DateTime.now().toIso8601String();
+    final db = await _db;
+    final filter = _raffleFilter(
+      inTrash: inTrash,
+      search: search,
+      status: status,
+    );
 
-    return await db.insert('raffles', {
-      'name': name,
-      'lottery_number': lotteryNumber,
-      'price': price,
-      'total_tickets': totalTickets,
-      'status': 'active',
-      'created_at': now,
-      'updated_at': now,
-      'date': date.toIso8601String(),
-      'image_path': imagePath,
-    });
+    final rows = await db.rawQuery(
+      'SELECT COUNT(*) FROM raffles r WHERE ${filter.where}',
+      filter.args,
+    );
+    return Sqflite.firstIntValue(rows) ?? 0;
   }
 
-  Future<List<Map<String, dynamic>>> getAllRaffles() async {
-    final db = await database;
-    return await db.query('raffles', orderBy: 'created_at DESC');
+  /// Construye el `WHERE` del listado con parámetros, nunca interpolando lo
+  /// que escribe la persona usuaria.
+  _Filter _raffleFilter({
+    required bool inTrash,
+    String? search,
+    String? status,
+  }) {
+    final clauses = <String>[
+      inTrash ? 'r.deleted_at IS NOT NULL' : 'r.deleted_at IS NULL',
+    ];
+    final args = <Object?>[];
+
+    final term = search?.trim().toLowerCase();
+    if (term != null && term.isNotEmpty) {
+      // LOWER() para que el filtro se comporte igual que el `toLowerCase()`
+      // que hacía la lista en Dart.
+      clauses.add(
+        r"(LOWER(r.name) LIKE ? ESCAPE '\' "
+        r"OR LOWER(r.lottery_number) LIKE ? ESCAPE '\')",
+      );
+      final pattern = '%${_escapeLike(term)}%';
+      args
+        ..add(pattern)
+        ..add(pattern);
+    }
+
+    if (status != null && status != 'all') {
+      clauses.add('r.status = ?');
+      args.add(status);
+    }
+
+    return (where: clauses.join(' AND '), args: args);
   }
 
-  Future<Map<String, dynamic>?> getRaffleWithTickets(int id) async {
-    final db = await database;
-    final raffleList =
-        await db.query('raffles', where: 'id = ?', whereArgs: [id]);
-    if (raffleList.isEmpty) return null;
+  /// Neutraliza los comodines de `LIKE` en lo que escribe la persona usuaria,
+  /// para que buscar "50%" no devuelva media base.
+  static String _escapeLike(String value) => value
+      .replaceAll(r'\', r'\\')
+      .replaceAll('%', r'\%')
+      .replaceAll('_', r'\_');
 
-    final tickets = await db.query('tickets',
-        where: 'raffle_id = ?', whereArgs: [id], orderBy: 'number ASC');
+  // --------------------------------------------------------------------
+  // Detalle y boletos
+  // --------------------------------------------------------------------
+
+  Future<Map<String, dynamic>?> getRaffleById(int id) async {
+    final db = await _db;
+    final rows = await db.query('raffles', where: 'id = ?', whereArgs: [id]);
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  /// Una página de boletos, ordenados por número.
+  ///
+  /// Sin `limit` devuelve todos: lo usan la exportación y el compartir, que sí
+  /// necesitan la lista completa.
+  Future<List<Map<String, dynamic>>> getTickets(
+    int raffleId, {
+    int? limit,
+    int? offset,
+    String? status,
+  }) async {
+    final db = await _db;
+    final hasStatus = status != null && status != 'all';
+
+    return db.query(
+      'tickets',
+      where: hasStatus ? 'raffle_id = ? AND status = ?' : 'raffle_id = ?',
+      whereArgs: [raffleId, if (hasStatus) status],
+      orderBy: 'number ASC',
+      limit: limit,
+      offset: limit == null ? null : (offset ?? 0),
+    );
+  }
+
+  /// Cuántos boletos hay en cada estado, contados por SQLite.
+  Future<Map<String, int>> getTicketStatusCounts(int raffleId) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      'SELECT status, COUNT(*) AS total FROM tickets '
+      'WHERE raffle_id = ? GROUP BY status',
+      [raffleId],
+    );
+
+    final counts = {'available': 0, 'reserved': 0, 'sold': 0};
+    for (final row in rows) {
+      counts[row['status'] as String] = row['total'] as int;
+    }
+    return counts;
+  }
+
+  /// Cuántos boletos tienen comprador asignado, por estado.
+  ///
+  /// Lo necesita el resumen de compradores del detalle, que antes recorría los
+  /// diez mil boletos en Dart para contarlos.
+  Future<Map<String, int>> getBuyerCounts(int raffleId) async {
+    final db = await _db;
+    final rows = await db.rawQuery(
+      '''
+      SELECT
+        COUNT(*) AS total,
+        COALESCE(SUM(CASE WHEN status = 'sold'     THEN 1 ELSE 0 END), 0) AS sold,
+        COALESCE(SUM(CASE WHEN status = 'reserved' THEN 1 ELSE 0 END), 0) AS reserved
+      FROM tickets
+      WHERE raffle_id = ? AND buyer_name IS NOT NULL AND TRIM(buyer_name) <> ''
+      ''',
+      [raffleId],
+    );
+
+    final row = rows.first;
     return {
-      'raffle': raffleList.first,
-      'tickets': tickets,
+      'total': row['total'] as int,
+      'sold': row['sold'] as int,
+      'reserved': row['reserved'] as int,
     };
+  }
+
+  /// Un boleto disponible al azar, elegido por SQLite.
+  ///
+  /// Se sortea en la base y no en Dart: la pantalla solo tiene cargada una
+  /// página de boletos, así que elegir en memoria sortearía entre cien de diez
+  /// mil.
+  Future<Map<String, dynamic>?> pickWinningTicket(int raffleId) async {
+    final db = await _db;
+
+    // Si hay boletos vendidos el ganador sale de ellos: sortear entre los
+    // disponibles garantizaba que ganase un número que nadie compró, justo lo
+    // contrario de lo que hace una rifa.
+    final sold = await db.rawQuery(
+      "SELECT * FROM tickets WHERE raffle_id = ? AND status = 'sold' "
+      'ORDER BY RANDOM() LIMIT 1',
+      [raffleId],
+    );
+    if (sold.isNotEmpty) return sold.first;
+
+    // Sin ventas todavía entran todos, para poder probar el sorteo antes de
+    // vender nada.
+    final any = await db.rawQuery(
+      'SELECT * FROM tickets WHERE raffle_id = ? ORDER BY RANDOM() LIMIT 1',
+      [raffleId],
+    );
+    return any.isEmpty ? null : any.first;
+  }
+
+  /// Solo los boletos que tienen comprador, para la lista de compradores.
+  Future<List<Map<String, dynamic>>> getTicketsWithBuyers(int raffleId) async {
+    final db = await _db;
+    return db.query(
+      'tickets',
+      where: "raffle_id = ? AND buyer_name IS NOT NULL AND TRIM(buyer_name) <> ''",
+      whereArgs: [raffleId],
+      orderBy: 'number ASC',
+    );
+  }
+
+  // --------------------------------------------------------------------
+  // Escritura
+  // --------------------------------------------------------------------
+
+  /// Crea la rifa y sus boletos de forma atómica y devuelve el id asignado.
+  ///
+  /// Los boletos se insertan por lote: una lotería de cuatro dígitos son diez
+  /// mil filas, y una a una tardaba segundos.
+  Future<int> insertRaffleWithTickets(
+    RaffleModel raffle,
+    List<TicketModel> tickets,
+  ) async {
+    final db = await _db;
+
+    return db.transaction((txn) async {
+      final raffleId = await txn.insert('raffles', raffle.toColumns());
+
+      if (tickets.isNotEmpty) {
+        final batch = txn.batch();
+        for (final ticket in tickets) {
+          batch.insert('tickets', ticket.toColumns(raffleId: raffleId));
+        }
+        await batch.commit(noResult: true);
+      }
+
+      return raffleId;
+    });
   }
 
   Future<void> updateTicket({
@@ -105,83 +275,151 @@ class RaffleLocalDatasource {
     String? buyerName,
     String? buyerContact,
   }) async {
-    final db = await database;
-    final Map<String, dynamic> values = {
-      'status': status,
-    };
-    
-    // Only include buyer fields if status is not 'available'
-    if (status != 'available') {
-      values['buyer_name'] = buyerName;
-      values['buyer_contact'] = buyerContact;
-    } else {
-      values['buyer_name'] = null;
-      values['buyer_contact'] = null;
-    }
-    
+    final db = await _db;
+    // Un boleto disponible no conserva comprador.
+    final isAvailable = status == 'available';
+
     await db.update(
       'tickets',
-      values,
+      {
+        'status': status,
+        'buyer_name': isAvailable ? null : buyerName,
+        'buyer_contact': isAvailable ? null : buyerContact,
+      },
       where: 'id = ?',
       whereArgs: [ticketId],
     );
   }
 
-  Future<void> updateRaffleStatus(int raffleId, String newStatus) async {
-    final db = await database;
-    final now = DateTime.now().toIso8601String();
+  /// Devuelve todos los boletos de una rifa al estado disponible.
+  Future<void> releaseTickets(int raffleId) async {
+    final db = await _db;
+    await db.update(
+      'tickets',
+      {'status': 'available', 'buyer_name': null, 'buyer_contact': null},
+      where: 'raffle_id = ?',
+      whereArgs: [raffleId],
+    );
+  }
+
+  Future<void> updateRaffleStatus(int raffleId, String newStatus) =>
+      _touch(raffleId, {'status': newStatus});
+
+  Future<void> updateRaffle({
+    required int raffleId,
+    required String name,
+    required String lotteryNumber,
+    required int priceMinor,
+    required DateTime date,
+    String? imagePath,
+  }) {
+    return _touch(raffleId, {
+      'name': name,
+      'lottery_number': lotteryNumber,
+      'price_minor': priceMinor,
+      'draw_date': date.toDbString(),
+      'image_path': imagePath,
+    });
+  }
+
+  /// Guarda el número ganador y, si la rifa se juega en la app, la da por
+  /// terminada en la misma transacción.
+  ///
+  /// Para deshacerlo está [resetDraw]; pasar una cadena vacía aquí no reinicia
+  /// nada, solo dejaría la rifa cerrada y sin ganador.
+  Future<void> setWinningNumberAndFinishRaffle(
+    int raffleId,
+    String winningNumber,
+  ) async {
+    if (winningNumber.isEmpty) return resetDraw(raffleId);
+
+    final db = await _db;
+
+    await db.transaction((txn) async {
+      final rows =
+          await txn.query('raffles', where: 'id = ?', whereArgs: [raffleId]);
+      if (rows.isEmpty) return;
+
+      final gameType = rows.first['game_type'] as String;
+      final values = <String, dynamic>{
+        'winning_number': winningNumber,
+        'updated_at': DateTime.now().toDbString(),
+      };
+
+      if (gameType == 'app') {
+        values['status'] = 'expired';
+      }
+
+      await txn
+          .update('raffles', values, where: 'id = ?', whereArgs: [raffleId]);
+    });
+  }
+
+  /// Deshace el sorteo: borra el número ganador y reabre la rifa.
+  ///
+  /// Las dos cosas van juntas en una transacción. Limpiar solo el número
+  /// dejaba la rifa en `expired` para siempre, sin forma de volver a sortear
+  /// ni de vender, que era el reinicio anterior.
+  Future<void> resetDraw(int raffleId) async {
+    final db = await _db;
     await db.update(
       'raffles',
       {
-        'status': newStatus,
-        'updated_at': now,
+        'winning_number': null,
+        'status': 'active',
+        'updated_at': DateTime.now().toDbString(),
       },
       where: 'id = ?',
       whereArgs: [raffleId],
     );
   }
 
-  Future<void> deleteRaffle(int raffleId) async {
-    final db = await database;
+  // --------------------------------------------------------------------
+  // Papelera
+  // --------------------------------------------------------------------
+
+  /// Envía la rifa a la papelera. Los boletos se conservan intactos para poder
+  /// restaurarla tal cual.
+  Future<void> moveToTrash(int raffleId) =>
+      _touch(raffleId, {'deleted_at': DateTime.now().toDbString()});
+
+  Future<void> restoreFromTrash(int raffleId) =>
+      _touch(raffleId, {'deleted_at': null});
+
+  /// Borrado definitivo. Los boletos se van por `ON DELETE CASCADE`.
+  Future<void> deleteForever(int raffleId) async {
+    final db = await _db;
     await db.delete('raffles', where: 'id = ?', whereArgs: [raffleId]);
   }
 
-  Future<void> deleteRaffleById(int raffleId) async {
-    final db = await database;
-    await db.delete('raffles', where: 'id = ?', whereArgs: [raffleId]);
+  Future<void> emptyTrash() async {
+    final db = await _db;
+    await db.delete('raffles', where: 'deleted_at IS NOT NULL');
   }
 
-  Future<void> clearDatabase() async {
-    final db = await database;
-    await db.delete('tickets');
-    await db.delete('raffles');
+  /// Elimina lo que lleve demasiado tiempo en la papelera.
+  ///
+  /// Devuelve cuántas rifas se borraron.
+  Future<int> purgeTrashOlderThan(Duration retention) async {
+    final db = await _db;
+    final cutoff = DateTime.now().subtract(retention).toDbString();
+
+    // Las fechas se guardan en UTC ISO-8601, que es comparable como texto.
+    return db.delete(
+      'raffles',
+      where: 'deleted_at IS NOT NULL AND deleted_at < ?',
+      whereArgs: [cutoff],
+    );
   }
 
-  Future<void> insertTicket({
-    required int raffleId,
-    required int number,
-    required String status,
-    String? buyerName,
-    String? buyerContact,
-  }) async {
-    final db = await database;
-    await db.insert('tickets', {
-      'raffle_id': raffleId,
-      'number': number,
-      'status': status,
-      'buyer_name': buyerName,
-      'buyer_contact': buyerContact,
-    });
-  }
-
-  Future<int> insertRaffleModel(RaffleModel model) async {
-    return await insertRaffle(
-      name: model.name,
-      lotteryNumber: model.lotteryNumber,
-      price: model.price,
-      totalTickets: model.totalTickets,
-      date: model.date,
-      imagePath: model.imagePath,
+  /// Aplica cambios a una rifa refrescando siempre `updated_at`.
+  Future<void> _touch(int raffleId, Map<String, dynamic> values) async {
+    final db = await _db;
+    await db.update(
+      'raffles',
+      {...values, 'updated_at': DateTime.now().toDbString()},
+      where: 'id = ?',
+      whereArgs: [raffleId],
     );
   }
 }
