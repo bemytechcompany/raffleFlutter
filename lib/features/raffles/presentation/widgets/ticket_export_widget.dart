@@ -35,20 +35,32 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
 
   Future<void> _exportTicket({required bool share}) async {
     if (isProcessing) return; // Prevenir múltiples ejecuciones
-    
+    setState(() => isProcessing = true);
+
     try {
-      setState(() => isProcessing = true);
-      final boundary = repaintKey.currentContext!.findRenderObject()
-          as RenderRepaintBoundary;
-      final image = await boundary.toImage(pixelRatio: 3.0);
+      // Esperar a que se pinte el frame para capturar el ticket tal como se ve.
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
+      final renderObject = repaintKey.currentContext?.findRenderObject();
+      if (renderObject is! RenderRepaintBoundary) {
+        _showMessage('No se pudo capturar el ticket. Inténtalo de nuevo.');
+        return;
+      }
+      final image = await renderObject.toImage(pixelRatio: 3.0);
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-      final pngBytes = byteData!.buffer.asUint8List();
+      image.dispose();
+      if (byteData == null) {
+        _showMessage('No se pudo generar la imagen del ticket.');
+        return;
+      }
+      final pngBytes = byteData.buffer.asUint8List();
 
       if (share) {
         final tempDir = await getTemporaryDirectory();
-        final file = await File('${tempDir.path}/ticket.png').create();
-        await file.writeAsBytes(pngBytes);
-        
+        final file = File('${tempDir.path}/ticket.png');
+        await file.writeAsBytes(pngBytes, flush: true);
+
         try {
           if (kDebugMode) {
             print('📱 TicketExport - Iniciando compartir en ${Platform.isIOS ? 'iOS' : 'Android'}');
@@ -73,48 +85,40 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
           if (kDebugMode) {
             print('📱 TicketExport - Error al compartir: $e');
           }
-        } finally {
-          // Resetear el estado siempre, sin importar la plataforma
-          if (mounted) {
-            if (kDebugMode) {
-              print('📱 TicketExport - Reseteando estado isProcessing = false');
-            }
-            setState(() => isProcessing = false);
-          }
         }
       } else {
-        final hasAccess = await Gal.hasAccess(toAlbum: true);
+        var hasAccess = await Gal.hasAccess(toAlbum: true);
         if (!hasAccess) {
-           await Gal.requestAccess(toAlbum: true);
+          hasAccess = await Gal.requestAccess(toAlbum: true);
         }
 
-        if (await Gal.hasAccess(toAlbum: true)){
-           await Gal.putImageBytes(pngBytes, album: 'RaffleTickets');
-           if (mounted) {
-             ScaffoldMessenger.of(context).showSnackBar(
-               const SnackBar(content: Text('Imagen guardada en la galería')),
-             );
-           }
+        if (hasAccess) {
+          final stamp = DateFormat('yyyyMMdd_HHmm').format(DateTime.now());
+          await Gal.putImageBytes(
+            pngBytes,
+            album: 'RaffleTickets',
+            name: 'boleta_${widget.ticket.number}_$stamp',
+          );
+          _showMessage('Imagen guardada en la galería');
         } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Permiso de galería denegado')),
-            );
-          }
-        }
-        
-        if (mounted) {
-          setState(() => isProcessing = false);
+          _showMessage('Permiso de galería denegado');
         }
       }
     } catch (e) {
+      _showMessage('Error al exportar: $e');
+    } finally {
+      // Resetear el estado siempre, sin importar la plataforma ni la rama
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al exportar: $e')),
-        );
         setState(() => isProcessing = false);
       }
     }
+  }
+
+  void _showMessage(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -167,7 +171,9 @@ class _TicketExportWidgetState extends State<TicketExportWidget> {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Lotería #${ticket.raffleId}',
+                            raffle.gameType == 'lottery'
+                                ? 'Lotería: ${raffle.lotteryNumber}'
+                                : raffle.name,
                             style: const TextStyle(color: Colors.white54),
                           ),
                           const SizedBox(height: 8),

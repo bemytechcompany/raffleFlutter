@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,6 +21,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Las fuentes del póster van empaquetadas en google_fonts/ bajo licencia
+  // OFL, que exige incluir el texto de la licencia en la app.
+  LicenseRegistry.addLicense(() async* {
+    final license = await rootBundle.loadString('google_fonts/OFL.txt');
+    yield LicenseEntryWithLineBreaks(['google_fonts'], license);
+  });
 
   final RaffleRepository raffleRepository = RaffleRepositoryImpl(
     raffleLocalDatasource: RaffleLocalDatasource.instance,
