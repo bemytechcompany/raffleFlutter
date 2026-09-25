@@ -1,9 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'package:raffle/features/raffles/presentation/widgets/poster_templates.dart';
 
 void main() {
+  setUpAll(() {
+    // Sin red en los tests: solo interesa que el nombre de la familia exista,
+    // que es lo que hace lanzar a `getFont` de forma síncrona.
+    GoogleFonts.config.allowRuntimeFetching = false;
+  });
+
+  test('todas las fuentes de las plantillas existen en google_fonts', () {
+    for (final template in PosterTemplates.all) {
+      for (final family in [template.titleFont, template.bodyFont]) {
+        if (family == null) continue;
+        expect(
+          () => GoogleFonts.getFont(family),
+          returnsNormally,
+          reason: '${template.name}: $family',
+        );
+      }
+    }
+  });
+
   test('el catálogo trae Personalizado más al menos diez diseños', () {
     expect(PosterTemplates.all.first, PosterTemplates.custom);
     expect(PosterTemplates.all.length, greaterThanOrEqualTo(11));

@@ -174,8 +174,14 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
       // vista previa tal como se ve.
       FocusManager.instance.primaryFocus?.unfocus();
       // Si se acaba de elegir una fuente, esperar a que termine de descargar
-      // para no exportar con la fuente de respaldo.
-      await GoogleFonts.pendingFonts();
+      // para no exportar con la fuente de respaldo. Sin conexión la descarga
+      // falla y `pendingFonts` relanza el error: en ese caso se exporta igual
+      // con la fuente de respaldo en vez de bloquear la exportación.
+      try {
+        await GoogleFonts.pendingFonts();
+      } catch (_) {
+        // Continuar con la fuente de respaldo.
+      }
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
 
