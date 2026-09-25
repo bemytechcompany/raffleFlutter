@@ -95,6 +95,10 @@ flutter:
 
   assets:
     - assets/images/
+    # Fuentes del póster empaquetadas para que google_fonts no dependa de la
+    # red. Nombres según la convención del paquete: Familia-Regular.ttf y
+    # Familia-Bold.ttf. OFL.txt reúne las licencias.
+    - google_fonts/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

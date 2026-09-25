@@ -11,6 +11,41 @@ void main() {
     GoogleFonts.config.allowRuntimeFetching = false;
   });
 
+  testWidgets('las fuentes de las plantillas cargan desde los assets sin red',
+      (tester) async {
+    final families = <String>{
+      for (final template in PosterTemplates.all) ...[
+        if (template.titleFont != null) template.titleFont!,
+        if (template.bodyFont != null) template.bodyFont!,
+      ],
+    };
+
+    // Con allowRuntimeFetching en false, si la variante no está empaquetada
+    // la carga falla y pendingFonts relanza el error.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SingleChildScrollView(
+          child: Column(
+            children: [
+              for (final family in families)
+                for (final weight in [FontWeight.normal, FontWeight.bold])
+                  Text(
+                    family,
+                    style: GoogleFonts.getFont(
+                      family,
+                      textStyle: TextStyle(fontWeight: weight),
+                    ),
+                  ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await tester.runAsync(() => GoogleFonts.pendingFonts());
+    expect(tester.takeException(), isNull);
+  });
+
   test('todas las fuentes de las plantillas existen en google_fonts', () {
     for (final template in PosterTemplates.all) {
       for (final family in [template.titleFont, template.bodyFont]) {
