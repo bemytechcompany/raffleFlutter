@@ -1,19 +1,22 @@
+import 'dart:io';
+import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
-import 'package:raffle/core/money/money.dart';
 import 'package:flutter/rendering.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:gal/gal.dart';
 import 'package:flutter_colorpicker/flutter_colorpicker.dart';
+import 'package:gal/gal.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:raffle/core/money/money.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../../domain/entities/raffle.dart';
 import '../../domain/entities/ticket.dart';
-import 'dart:math' as math;
+import '../widgets/poster_templates.dart';
 
 class RaffleSharePage extends StatefulWidget {
   final Raffle raffle;
@@ -27,42 +30,19 @@ class RaffleSharePage extends StatefulWidget {
     required this.currentPage,
   });
 
+  /// Identifica la vista previa del póster (útil en tests).
+  static const Key posterKey = ValueKey('poster-preview');
+
   @override
   State<RaffleSharePage> createState() => _RaffleSharePageState();
 }
 
 class _RaffleSharePageState extends State<RaffleSharePage> {
-  final GlobalKey repaintKey = GlobalKey();
-  bool isProcessing = false;
-  Color selectedBackgroundColor = Colors.deepPurple;
-  Color selectedTextColor = Colors.white;
-  bool isBoldText = true;
-  double logoSize = 100;
-  double titleSize = 24;
-  double gridOpacity = 0.8;
-  bool showPrice = true;
-  bool showLogo = true;
-  bool isLogoRounded = true;
-  bool showDateAndLottery = true;
-  bool showProgressBar = true;
-  bool showPercentageDetails = true;
-  String shareMessage = '¡Participa en nuestra rifa!';
-  final TextEditingController messageController = TextEditingController();
-  File? backgroundImage;
-  bool useBackgroundImage = false;
+  /// Ancho lógico fijo del póster. Con pixelRatio 3 exporta a 1080 px de
+  /// ancho en cualquier teléfono; la vista previa se escala con FittedBox.
+  static const double _posterWidth = 360;
 
-  /// Colores de fondo y texto de los tickets por estado. Un texto en `null`
-  /// hereda [selectedTextColor].
-  final _StatusColors availableColors =
-      _StatusColors(defaultBackground: Colors.green);
-  final _StatusColors reservedColors =
-      _StatusColors(defaultBackground: Colors.orange);
-  final _StatusColors soldColors = _StatusColors(defaultBackground: Colors.red);
-
-  /// Fuente del póster. `null` usa la fuente del sistema; el resto son
-  /// familias de Google Fonts que se descargan y quedan en caché al elegirlas.
-  String? selectedFontFamily;
-  static const String _defaultFontLabel = 'Predeterminada';
+  static const String _defaultFontLabel = 'Según plantilla';
   static const List<String> _fontOptions = [
     'Poppins',
     'Montserrat',
@@ -76,10 +56,53 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
     'Fredoka',
   ];
 
+  final GlobalKey repaintKey = GlobalKey();
+  bool isProcessing = false;
+
+  PosterTemplate template = PosterTemplates.custom;
+  Color selectedBackgroundColor = PosterTemplates.custom.background;
+  Color selectedTextColor = PosterTemplates.custom.textColor;
+
+  /// Fuente elegida por el usuario. `null` usa las fuentes de la plantilla.
+  String? selectedFontFamily;
+  bool isBoldText = true;
+  double logoSize = 100;
+  double titleSize = 24;
+  double gridOpacity = 0.8;
+  bool showPrice = true;
+  bool showLogo = true;
+  bool isLogoRounded = true;
+  bool showDateAndLottery = true;
+  bool showProgressBar = true;
+  bool showPercentageDetails = true;
+  File? backgroundImage;
+  bool useBackgroundImage = false;
+
+  final TextEditingController messageController =
+      TextEditingController(text: '¡Participa en nuestra rifa!');
+  final TextEditingController responsibleController = TextEditingController();
+  final TextEditingController prizeController = TextEditingController();
+  final TextEditingController contactController = TextEditingController();
+  final TextEditingController phraseController = TextEditingController();
+
+  /// Colores de fondo y texto de las boletas por estado. Un texto en `null`
+  /// hereda [selectedTextColor].
+  late final _StatusColors availableColors = _StatusColors(
+    background: template.availableColor,
+    text: template.availableTextColor,
+  );
+  late final _StatusColors reservedColors = _StatusColors(
+    background: template.reservedColor,
+    text: template.reservedTextColor,
+  );
+  late final _StatusColors soldColors = _StatusColors(
+    background: template.soldColor,
+    text: template.soldTextColor,
+  );
+
   @override
   void initState() {
     super.initState();
-    messageController.text = shareMessage;
     if (widget.raffle.imagePath == null) {
       titleSize = 28;
     }
@@ -88,7 +111,39 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
   @override
   void dispose() {
     messageController.dispose();
+    responsibleController.dispose();
+    prizeController.dispose();
+    contactController.dispose();
+    phraseController.dispose();
     super.dispose();
+  }
+
+  /// Aplica la paleta, fuentes y fondo de la plantilla. Los ajustes manuales
+  /// posteriores se hacen encima.
+  void _applyTemplate(PosterTemplate next) {
+    setState(() {
+      template = next;
+      selectedBackgroundColor = next.background;
+      selectedTextColor = next.textColor;
+      useBackgroundImage = false;
+      selectedFontFamily = null;
+      // Con patrón de fondo, las boletas translúcidas dejan ver el motivo y
+      // ensucian los números; se parte de opacidad total.
+      gridOpacity = next.pattern == PosterPattern.none ? 0.8 : 1.0;
+      _resetTicketColorsTo(next);
+    });
+  }
+
+  void _resetTicketColorsTo(PosterTemplate source) {
+    availableColors
+      ..background = source.availableColor
+      ..text = source.availableTextColor;
+    reservedColors
+      ..background = source.reservedColor
+      ..text = source.reservedTextColor;
+    soldColors
+      ..background = source.soldColor
+      ..text = source.soldTextColor;
   }
 
   Future<void> _pickBackgroundImage() async {
@@ -107,11 +162,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
         });
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al seleccionar imagen: $e')),
-        );
-      }
+      _showMessage('Error al seleccionar imagen: $e');
     }
   }
 
@@ -222,11 +273,13 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
     return number.toString();
   }
 
-  /// Estilo de texto del póster: color global, negrita y fuente elegida.
+  /// Estilo de texto del póster: color global, negrita y fuente elegida o la
+  /// de la plantilla (de título o de cuerpo).
   TextStyle _posterTextStyle({
     required double fontSize,
     Color? color,
     List<Shadow>? shadows,
+    bool title = false,
   }) {
     final base = TextStyle(
       color: color ?? selectedTextColor,
@@ -234,9 +287,22 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
       fontWeight: isBoldText ? FontWeight.bold : FontWeight.normal,
       shadows: shadows,
     );
-    final family = selectedFontFamily;
+    final family =
+        selectedFontFamily ?? (title ? template.titleFont : template.bodyFont);
     if (family == null) return base;
     return GoogleFonts.getFont(family, textStyle: base);
+  }
+
+  /// Sombra suave solo cuando el texto es claro; sobre texto oscuro ensucia.
+  List<Shadow>? _textShadows({double blur = 4, double offset = 2}) {
+    if (selectedTextColor.computeLuminance() < 0.5) return null;
+    return [
+      Shadow(
+        offset: Offset(0, offset),
+        blurRadius: blur,
+        color: Colors.black38,
+      ),
+    ];
   }
 
   Future<void> _pickColor({
@@ -287,6 +353,226 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Póster
+  // ---------------------------------------------------------------------------
+
+  Widget _buildPoster() {
+    final dateFormat = DateFormat('dd/MM/yyyy', 'es');
+    final responsible = responsibleController.text.trim();
+    final prize = prizeController.text.trim();
+    final contact = contactController.text.trim();
+    final phrase = phraseController.text.trim();
+    final hasLogo = showLogo && widget.raffle.imagePath != null;
+    final image = backgroundImage;
+    final showImage = useBackgroundImage && image != null;
+
+    return RepaintBoundary(
+      key: repaintKey,
+      child: ClipRRect(
+        key: RaffleSharePage.posterKey,
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            // Capa 1: color sólido o imagen del usuario.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: showImage ? null : selectedBackgroundColor,
+                  image: showImage
+                      ? DecorationImage(
+                          image: FileImage(image),
+                          fit: BoxFit.cover,
+                          alignment: Alignment.center,
+                        )
+                      : null,
+                ),
+              ),
+            ),
+            // Capa 2: patrón repetido de la plantilla (no sobre imagen).
+            if (!showImage && template.pattern != PosterPattern.none)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: PosterPatternPainter(
+                    pattern: template.pattern,
+                    colors: template.patternColors,
+                  ),
+                ),
+              ),
+            // Capa 3: adornos anclados a bordes y esquinas.
+            if (template.ornament != PosterOrnament.none)
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: PosterOrnamentPainter(
+                    ornament: template.ornament,
+                    motif: template.cornerMotif,
+                    color: template.ornamentColor,
+                  ),
+                ),
+              ),
+            // Capa 4: contenido.
+            Column(
+              children: [
+                const SizedBox(height: 20),
+                _buildLogoContainer(),
+                SizedBox(height: hasLogo ? 16 : 0),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    widget.raffle.name,
+                    style: _posterTextStyle(
+                      fontSize: titleSize,
+                      title: true,
+                      shadows: _textShadows(),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                if (responsible.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Text(
+                      'Responsable: $responsible',
+                      style: _posterTextStyle(fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                if (showDateAndLottery) ...[
+                  _buildInfoPanel(dateFormat),
+                  const SizedBox(height: 16),
+                ],
+                if (prize.isNotEmpty || showPrice)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (prize.isNotEmpty) _buildPill('Premio: $prize'),
+                        if (showPrice)
+                          _buildPill(
+                            'Precio: ${Money.format(widget.raffle.priceMinor)}',
+                          ),
+                      ],
+                    ),
+                  ),
+                if (phrase.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Text(
+                      phrase,
+                      style: _posterTextStyle(fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                // Barra de progreso y detalles
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildProgressBar(),
+                ),
+                const SizedBox(height: 20),
+                // Grid de tickets
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: _buildTicketGrid(),
+                ),
+                if (contact.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.phone, color: selectedTextColor, size: 18),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          contact,
+                          style: _posterTextStyle(fontSize: 14),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 20),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Recuadro con lotería y fecha.
+  Widget _buildInfoPanel(DateFormat dateFormat) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: BoxDecoration(
+        color: template.panelColor,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: template.panelBorderColor, width: 1),
+      ),
+      child: Column(
+        children: [
+          if (widget.raffle.gameType == 'lottery') ...[
+            _buildInfoRow(
+              Icons.confirmation_number_outlined,
+              'Lotería: ${widget.raffle.lotteryNumber}',
+            ),
+            const SizedBox(height: 8),
+          ],
+          _buildInfoRow(
+            Icons.calendar_today,
+            'Fecha: ${dateFormat.format(widget.raffle.date)}',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String text) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, color: selectedTextColor, size: 20),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            text,
+            style: _posterTextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPill(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: template.panelColor,
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: template.panelBorderColor, width: 1),
+      ),
+      child: Text(
+        text,
+        style: _posterTextStyle(
+          fontSize: 18,
+          shadows: _textShadows(blur: 2, offset: 1),
+        ),
+      ),
+    );
+  }
+
   Widget _buildProgressBar() {
     final total = widget.tickets.length;
     final sold = widget.tickets.where((t) => t.status == 'sold').length;
@@ -302,7 +588,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
             height: 12,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: Colors.white.withValues(alpha: 0.1),
+              color: template.panelColor,
             ),
             child: Row(
               children: [
@@ -350,8 +636,9 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
         // Detalles de porcentaje (opcionales)
         if (showPercentageDetails) ...[
           SizedBox(height: showProgressBar ? 8 : 0),
+          // Cada etiqueta ocupa un tercio y se encoge si la fuente es ancha,
+          // así la leyenda nunca desborda el ancho fijo del póster.
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildStatusLabel('Vendidos', sold, total, soldColors.background),
               _buildStatusLabel(
@@ -366,7 +653,18 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
   }
 
   Widget _buildStatusLabel(String label, int count, int total, Color color) {
-    final percentage = (count / total * 100).toStringAsFixed(1);
+    final percentage =
+        total == 0 ? '0.0' : (count / total * 100).toStringAsFixed(1);
+    return Expanded(
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: _buildStatusLabelContent(label, count, percentage, color),
+      ),
+    );
+  }
+
+  Widget _buildStatusLabelContent(
+      String label, int count, String percentage, Color color) {
     return Column(
       children: [
         Row(
@@ -377,6 +675,8 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.8),
                 shape: BoxShape.circle,
+                border:
+                    Border.all(color: template.panelBorderColor, width: 0.5),
               ),
             ),
             const SizedBox(width: 4),
@@ -474,7 +774,7 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
                     .withValues(alpha: gridOpacity),
                 borderRadius: BorderRadius.circular(6), // Bordes más pequeños
                 border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: template.panelBorderColor.withValues(alpha: 0.5),
                   width: 0.5, // Borde más delgado
                 ),
               ),
@@ -496,7 +796,8 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
   }
 
   Widget _buildLogoContainer() {
-    if (!showLogo || widget.raffle.imagePath == null) {
+    final imagePath = widget.raffle.imagePath;
+    if (!showLogo || imagePath == null) {
       return const SizedBox.shrink();
     }
 
@@ -507,475 +808,195 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
         shape: isLogoRounded ? BoxShape.circle : BoxShape.rectangle,
         borderRadius: isLogoRounded ? null : BorderRadius.circular(16),
         image: DecorationImage(
-          image: FileImage(File(widget.raffle.imagePath!)),
+          image: FileImage(File(imagePath)),
           fit: BoxFit.cover,
         ),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: template.panelBorderColor,
           width: 2,
         ),
       ),
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final dateFormat = DateFormat('dd/MM/yyyy', 'es');
+  // ---------------------------------------------------------------------------
+  // Controles
+  // ---------------------------------------------------------------------------
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Compartir Rifa'),
-        actions: [
-          if (!isProcessing) ...[
-            IconButton(
-              icon: const Icon(Icons.share),
-              onPressed: () => _exportImage(share: true),
-              tooltip: 'Compartir',
-            ),
-            IconButton(
-              icon: const Icon(Icons.download),
-              onPressed: () => _exportImage(share: false),
-              tooltip: 'Guardar',
-            ),
-          ] else
-            const Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: CircularProgressIndicator(),
-            ),
-        ],
-      ),
-      // SingleChildScrollView mantiene la vista previa montada aunque el
-      // usuario baje hasta el final. ListView la desmontaba al salir del
-      // viewport y la captura fallaba con "Null check operator used on a
-      // null value".
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Vista previa
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: RepaintBoundary(
-                key: repaintKey,
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: useBackgroundImage ? null : selectedBackgroundColor,
-                    image: useBackgroundImage && backgroundImage != null
-                        ? DecorationImage(
-                            image: FileImage(backgroundImage!),
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                          )
-                        : null,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildLogoContainer(),
-                      SizedBox(
-                          height: showLogo && widget.raffle.imagePath != null
-                              ? 16
-                              : 0),
-                      // Título
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: Text(
-                          widget.raffle.name,
-                          style: _posterTextStyle(
-                            fontSize: titleSize,
-                            shadows: const [
-                              Shadow(
-                                offset: Offset(0, 2),
-                                blurRadius: 4,
-                                color: Colors.black38,
-                              ),
-                            ],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Información de fecha y lotería
-                      if (showDateAndLottery)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
-                          ),
-                          margin: const EdgeInsets.symmetric(horizontal: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(15),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              if (widget.raffle.gameType == 'lottery') ...[
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.confirmation_number_outlined,
-                                      color: selectedTextColor,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Lotería: ${widget.raffle.lotteryNumber}',
-                                      style: _posterTextStyle(fontSize: 16),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                              ],
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.calendar_today,
-                                    color: selectedTextColor,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Fecha: ${dateFormat.format(widget.raffle.date)}',
-                                    style: _posterTextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(height: 16),
-
-                      // Precio
-                      if (showPrice)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          child: Text(
-                            'Precio: ${Money.format(widget.raffle.priceMinor)}',
-                            style: _posterTextStyle(
-                              fontSize: 18,
-                              shadows: const [
-                                Shadow(
-                                  offset: Offset(0, 1),
-                                  blurRadius: 2,
-                                  color: Colors.black38,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      const SizedBox(height: 20),
-                      // Barra de progreso y detalles
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: _buildProgressBar(),
-                      ),
-                      const SizedBox(height: 20),
-                      // Grid de tickets
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child: _buildTicketGrid(),
-                      ),
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            // Opciones de personalización
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Personalización',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Fondo
-                      ExpansionTile(
-                        title: const Text('Fondo'),
-                        children: [
-                          // El grupo lo gestiona el ancestro `RadioGroup`; cada
-                          // `Radio` solo declara su valor.
-                          RadioGroup<bool>(
-                            groupValue: useBackgroundImage,
-                            onChanged: (value) => setState(() {
-                              useBackgroundImage = value ?? false;
-                            }),
-                            child: Column(
-                              children: [
-                                ListTile(
-                                  title: const Text('Color sólido'),
-                                  leading: const Radio<bool>(value: false),
-                                  trailing: _buildColorSwatch(
-                                    color: selectedBackgroundColor,
-                                    onTap: useBackgroundImage
-                                        ? null
-                                        : () => _pickColor(
-                                              title: 'Color de fondo',
-                                              initialColor:
-                                                  selectedBackgroundColor,
-                                              onChanged: (color) =>
-                                                  selectedBackgroundColor =
-                                                      color,
-                                            ),
-                                  ),
-                                ),
-                                ListTile(
-                                  title: const Text('Imagen'),
-                                  leading: const Radio<bool>(value: true),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.image),
-                                    onPressed: useBackgroundImage
-                                        ? _pickBackgroundImage
-                                        : null,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Color de texto
-                      ListTile(
-                        title: const Text('Color de texto'),
-                        trailing: _buildColorSwatch(
-                          color: selectedTextColor,
-                          onTap: () => _pickColor(
-                            title: 'Color de texto',
-                            initialColor: selectedTextColor,
-                            onChanged: (color) => selectedTextColor = color,
-                          ),
-                        ),
-                      ),
-
-                      // Fuente del texto
-                      ListTile(
-                        title: const Text('Fuente del texto'),
-                        trailing: DropdownButton<String>(
-                          value: selectedFontFamily ?? _defaultFontLabel,
-                          items: [
-                            const DropdownMenuItem(
-                              value: _defaultFontLabel,
-                              child: Text(_defaultFontLabel),
-                            ),
-                            for (final family in _fontOptions)
-                              DropdownMenuItem(
-                                value: family,
-                                child: Text(
-                                  family,
-                                  style: GoogleFonts.getFont(family),
-                                ),
-                              ),
-                          ],
-                          onChanged: (value) => setState(() {
-                            selectedFontFamily =
-                                value == _defaultFontLabel ? null : value;
-                          }),
-                        ),
-                      ),
-
-                      // Colores de los tickets por estado
-                      ExpansionTile(
-                        title: const Text('Colores de los tickets'),
-                        subtitle: const Text('Fondo y texto según el estado'),
-                        children: [
-                          _buildStatusColorRow('Disponibles', availableColors),
-                          _buildStatusColorRow('Reservados', reservedColors),
-                          _buildStatusColorRow('Vendidos', soldColors),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton.icon(
-                              onPressed: _resetTicketColors,
-                              icon: const Icon(Icons.restart_alt),
-                              label: const Text('Restablecer'),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // Controles de visibilidad
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          'Elementos visibles',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-
-                      // Mostrar fecha y lotería
-                      SwitchListTile(
-                        title: const Text('Mostrar fecha y lotería'),
-                        value: showDateAndLottery,
-                        onChanged: (value) =>
-                            setState(() => showDateAndLottery = value),
-                      ),
-
-                      // Mostrar precio
-                      SwitchListTile(
-                        title: const Text('Mostrar precio'),
-                        value: showPrice,
-                        onChanged: (value) => setState(() => showPrice = value),
-                      ),
-
-                      // Mostrar barra de progreso
-                      SwitchListTile(
-                        title: const Text('Mostrar barra de progreso'),
-                        value: showProgressBar,
-                        onChanged: (value) =>
-                            setState(() => showProgressBar = value),
-                      ),
-
-                      // Mostrar detalles de porcentaje
-                      SwitchListTile(
-                        title: const Text('Mostrar detalles de porcentaje'),
-                        value: showPercentageDetails,
-                        onChanged: (value) =>
-                            setState(() => showPercentageDetails = value),
-                      ),
-
-                      // Texto en negrita
-                      SwitchListTile(
-                        title: const Text('Texto en negrita'),
-                        value: isBoldText,
-                        onChanged: (value) =>
-                            setState(() => isBoldText = value),
-                      ),
-
-                      // Opciones de logo
-                      if (widget.raffle.imagePath != null) ...[
-                        SwitchListTile(
-                          title: const Text('Mostrar logo'),
-                          value: showLogo,
-                          onChanged: (value) => setState(() {
-                            showLogo = value;
-                            if (!value) {
-                              titleSize = 28;
-                            } else {
-                              titleSize = 24;
-                            }
-                          }),
-                        ),
-                        if (showLogo) ...[
-                          SwitchListTile(
-                            title: const Text('Logo redondeado'),
-                            value: isLogoRounded,
-                            onChanged: (value) =>
-                                setState(() => isLogoRounded = value),
-                          ),
-                          ListTile(
-                            title: const Text('Tamaño del logo'),
-                            subtitle: Slider(
-                              value: logoSize,
-                              min: 60,
-                              max: 140,
-                              onChanged: (value) =>
-                                  setState(() => logoSize = value),
-                            ),
-                          ),
-                        ],
-                      ],
-
-                      // Tamaño del título
-                      ListTile(
-                        title: const Text('Tamaño del título'),
-                        subtitle: Slider(
-                          value: titleSize,
-                          min: 18,
-                          max: widget.raffle.imagePath == null || !showLogo
-                              ? 32
-                              : 28,
-                          onChanged: (value) =>
-                              setState(() => titleSize = value),
-                        ),
-                      ),
-
-                      // Opacidad del grid
-                      ListTile(
-                        title: const Text('Opacidad de los tickets'),
-                        subtitle: Slider(
-                          value: gridOpacity,
-                          min: 0.3,
-                          max: 1.0,
-                          onChanged: (value) =>
-                              setState(() => gridOpacity = value),
-                        ),
-                      ),
-
-                      // Mensaje personalizado
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: TextField(
-                          controller: messageController,
-                          decoration: const InputDecoration(
-                            labelText: 'Mensaje al compartir',
-                            border: OutlineInputBorder(),
-                          ),
-                          maxLines: 2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+  Widget _buildSectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
       ),
     );
   }
 
-  _StatusColors _statusColorsFor(String status) {
-    switch (status) {
-      case 'sold':
-        return soldColors;
-      case 'reserved':
-        return reservedColors;
-      default:
-        return availableColors;
-    }
+  Widget _buildTemplatePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Plantilla'),
+        SizedBox(
+          height: 112,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemCount: PosterTemplates.all.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final item = PosterTemplates.all[index];
+              return PosterTemplateThumbnail(
+                template: item,
+                selected: item.id == template.id,
+                onTap: () => _applyTemplate(item),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
-  Color _getTicketColor(String status) => _statusColorsFor(status).background;
+  Widget _buildPosterFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Datos del póster'),
+        _buildPosterField(
+          responsibleController,
+          label: 'Responsable',
+          hint: 'Nombre de quien organiza',
+        ),
+        _buildPosterField(
+          prizeController,
+          label: 'Premio',
+          hint: 'Ej.: una moto o \$1.000.000',
+        ),
+        _buildPosterField(
+          contactController,
+          label: 'Contacto',
+          hint: 'WhatsApp o teléfono',
+        ),
+        _buildPosterField(
+          phraseController,
+          label: 'Frase',
+          hint: 'Ej.: Juega el viernes con la Lotería de Risaralda',
+          maxLines: 2,
+        ),
+      ],
+    );
+  }
 
-  Color _getTicketTextColor(String status) =>
-      _statusColorsFor(status).text ?? selectedTextColor;
+  Widget _buildPosterField(
+    TextEditingController controller, {
+    required String label,
+    required String hint,
+    int maxLines = 1,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: TextField(
+        controller: controller,
+        maxLines: maxLines,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          border: const OutlineInputBorder(),
+          isDense: true,
+        ),
+        onChanged: (_) => setState(() {}),
+      ),
+    );
+  }
 
-  void _resetTicketColors() {
-    setState(() {
-      availableColors.reset();
-      reservedColors.reset();
-      soldColors.reset();
-    });
+  Widget _buildBackgroundSection() {
+    return ExpansionTile(
+      title: const Text('Fondo'),
+      subtitle: Text(useBackgroundImage ? 'Imagen' : 'Color sólido'),
+      children: [
+        // El grupo lo gestiona el ancestro `RadioGroup`; cada `Radio` solo
+        // declara su valor.
+        RadioGroup<bool>(
+          groupValue: useBackgroundImage,
+          onChanged: (value) => setState(() {
+            useBackgroundImage = value ?? false;
+          }),
+          child: Column(
+            children: [
+              ListTile(
+                title: const Text('Color sólido'),
+                leading: const Radio<bool>(value: false),
+                trailing: _buildColorSwatch(
+                  color: selectedBackgroundColor,
+                  onTap: useBackgroundImage
+                      ? null
+                      : () => _pickColor(
+                            title: 'Color de fondo',
+                            initialColor: selectedBackgroundColor,
+                            onChanged: (color) =>
+                                selectedBackgroundColor = color,
+                          ),
+                ),
+              ),
+              ListTile(
+                title: const Text('Imagen'),
+                subtitle: const Text('Reemplaza el color y el patrón'),
+                leading: const Radio<bool>(value: true),
+                trailing: IconButton(
+                  icon: const Icon(Icons.image),
+                  onPressed: useBackgroundImage ? _pickBackgroundImage : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFontSelector() {
+    return ListTile(
+      title: const Text('Fuente del texto'),
+      trailing: DropdownButton<String>(
+        value: selectedFontFamily ?? _defaultFontLabel,
+        items: [
+          const DropdownMenuItem(
+            value: _defaultFontLabel,
+            child: Text(_defaultFontLabel),
+          ),
+          for (final family in _fontOptions)
+            DropdownMenuItem(
+              value: family,
+              child: Text(family, style: GoogleFonts.getFont(family)),
+            ),
+        ],
+        onChanged: (value) => setState(() {
+          selectedFontFamily = value == _defaultFontLabel ? null : value;
+        }),
+      ),
+    );
+  }
+
+  Widget _buildTicketColorsSection() {
+    return ExpansionTile(
+      title: const Text('Colores de los tickets'),
+      subtitle: const Text('Fondo y texto según el estado'),
+      children: [
+        _buildStatusColorRow('Disponibles', availableColors),
+        _buildStatusColorRow('Reservados', reservedColors),
+        _buildStatusColorRow('Vendidos', soldColors),
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton.icon(
+            onPressed: () => setState(() => _resetTicketColorsTo(template)),
+            icon: const Icon(Icons.restart_alt),
+            label: const Text('Restablecer'),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildStatusColorRow(String label, _StatusColors colors) {
@@ -1033,21 +1054,213 @@ class _RaffleSharePageState extends State<RaffleSharePage> {
       ],
     );
   }
+
+  Widget _buildVisibilityControls() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Elementos visibles'),
+        SwitchListTile(
+          title: const Text('Mostrar fecha y lotería'),
+          value: showDateAndLottery,
+          onChanged: (value) => setState(() => showDateAndLottery = value),
+        ),
+        SwitchListTile(
+          title: const Text('Mostrar precio'),
+          value: showPrice,
+          onChanged: (value) => setState(() => showPrice = value),
+        ),
+        SwitchListTile(
+          title: const Text('Mostrar barra de progreso'),
+          value: showProgressBar,
+          onChanged: (value) => setState(() => showProgressBar = value),
+        ),
+        SwitchListTile(
+          title: const Text('Mostrar detalles de porcentaje'),
+          value: showPercentageDetails,
+          onChanged: (value) => setState(() => showPercentageDetails = value),
+        ),
+        SwitchListTile(
+          title: const Text('Texto en negrita'),
+          value: isBoldText,
+          onChanged: (value) => setState(() => isBoldText = value),
+        ),
+        if (widget.raffle.imagePath != null) ...[
+          SwitchListTile(
+            title: const Text('Mostrar logo'),
+            value: showLogo,
+            onChanged: (value) => setState(() {
+              showLogo = value;
+              titleSize = value ? 24 : 28;
+            }),
+          ),
+          if (showLogo) ...[
+            SwitchListTile(
+              title: const Text('Logo redondeado'),
+              value: isLogoRounded,
+              onChanged: (value) => setState(() => isLogoRounded = value),
+            ),
+            ListTile(
+              title: const Text('Tamaño del logo'),
+              subtitle: Slider(
+                value: logoSize,
+                min: 60,
+                max: 140,
+                onChanged: (value) => setState(() => logoSize = value),
+              ),
+            ),
+          ],
+        ],
+        ListTile(
+          title: const Text('Tamaño del título'),
+          subtitle: Slider(
+            value: titleSize,
+            min: 18,
+            max: widget.raffle.imagePath == null || !showLogo ? 32 : 28,
+            onChanged: (value) => setState(() => titleSize = value),
+          ),
+        ),
+        ListTile(
+          title: const Text('Opacidad de los tickets'),
+          subtitle: Slider(
+            value: gridOpacity,
+            min: 0.3,
+            max: 1.0,
+            onChanged: (value) => setState(() => gridOpacity = value),
+          ),
+        ),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Compartir Rifa'),
+        actions: [
+          if (!isProcessing) ...[
+            IconButton(
+              icon: const Icon(Icons.share),
+              onPressed: () => _exportImage(share: true),
+              tooltip: 'Compartir',
+            ),
+            IconButton(
+              icon: const Icon(Icons.download),
+              onPressed: () => _exportImage(share: false),
+              tooltip: 'Guardar',
+            ),
+          ] else
+            const Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: CircularProgressIndicator(),
+            ),
+        ],
+      ),
+      // SingleChildScrollView mantiene la vista previa montada aunque el
+      // usuario baje hasta el final. ListView la desmontaba al salir del
+      // viewport y la captura fallaba con "Null check operator used on a
+      // null value".
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Vista previa a ancho fijo, escalada para caber en pantalla.
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: SizedBox(
+                    width: _posterWidth,
+                    child: _buildPoster(),
+                  ),
+                ),
+              ),
+            ),
+
+            // Opciones de personalización
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Personalización',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildTemplatePicker(),
+                      const SizedBox(height: 8),
+                      _buildPosterFields(),
+                      const SizedBox(height: 8),
+                      _buildBackgroundSection(),
+                      ListTile(
+                        title: const Text('Color de texto'),
+                        trailing: _buildColorSwatch(
+                          color: selectedTextColor,
+                          onTap: () => _pickColor(
+                            title: 'Color de texto',
+                            initialColor: selectedTextColor,
+                            onChanged: (color) => selectedTextColor = color,
+                          ),
+                        ),
+                      ),
+                      _buildFontSelector(),
+                      _buildTicketColorsSection(),
+                      _buildVisibilityControls(),
+                      // Mensaje personalizado
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: TextField(
+                          controller: messageController,
+                          decoration: const InputDecoration(
+                            labelText: 'Mensaje al compartir',
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  _StatusColors _statusColorsFor(String status) {
+    switch (status) {
+      case 'sold':
+        return soldColors;
+      case 'reserved':
+        return reservedColors;
+      default:
+        return availableColors;
+    }
+  }
+
+  Color _getTicketColor(String status) => _statusColorsFor(status).background;
+
+  Color _getTicketTextColor(String status) =>
+      _statusColorsFor(status).text ?? selectedTextColor;
 }
 
 /// Colores configurables de un estado de ticket dentro del póster.
 class _StatusColors {
-  _StatusColors({required this.defaultBackground})
-      : background = defaultBackground;
+  _StatusColors({required this.background, this.text});
 
-  final Color defaultBackground;
   Color background;
 
   /// `null` significa que el texto usa el color de texto global.
   Color? text;
-
-  void reset() {
-    background = defaultBackground;
-    text = null;
-  }
 }

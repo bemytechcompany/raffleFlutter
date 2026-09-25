@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:raffle/features/raffles/domain/entities/raffle.dart';
 import 'package:raffle/features/raffles/domain/entities/ticket.dart';
 import 'package:raffle/features/raffles/presentation/pages/raffle_share_page.dart';
+import 'package:raffle/features/raffles/presentation/widgets/poster_templates.dart';
 
 const _raffleName = 'Gran Rifa de Prueba';
 
@@ -129,5 +130,31 @@ void main() {
     await tester.tap(find.text('Aceptar'));
     await tester.pumpAndSettle();
     expect(find.text('Texto de Disponibles'), findsNothing);
+  });
+
+  testWidgets('aplicar una plantilla cambia el fondo del póster',
+      (tester) async {
+    await _pumpSharePage(tester);
+
+    BoxDecoration posterBackground() {
+      final box = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find.byKey(RaffleSharePage.posterKey),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      return box.decoration as BoxDecoration;
+    }
+
+    expect(posterBackground().color, PosterTemplates.custom.background);
+
+    final thumbnail = find.text(PosterTemplates.hearts.name);
+    await tester.ensureVisible(thumbnail);
+    await tester.tap(thumbnail);
+    await tester.pumpAndSettle();
+
+    expect(posterBackground().color, PosterTemplates.hearts.background);
   });
 }
