@@ -19,7 +19,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # El versionCode 8 ya se publicó en producción el 15/08/2026, así que Play
 # rechaza cualquier bundle que lo repita: el siguiente sube a 9.
-version: 1.0.7+9
+version: 1.0.8+10
 
 environment:
   sdk: ^3.5.3
