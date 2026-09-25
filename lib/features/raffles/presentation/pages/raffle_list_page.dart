@@ -430,7 +430,10 @@ class _RaffleListPageState extends State<RaffleListPage> {
                                                 ),
                                                 const SizedBox(height: 4),
                                                 Text(
-                                                    'Lotería #${raffle.lotteryNumber}'),
+                                                  raffle.gameType == 'lottery'
+                                                      ? 'Lotería: ${raffle.lotteryNumber}'
+                                                      : 'Sorteo en la app',
+                                                ),
                                                 const SizedBox(height: 6),
                                                 ClipRRect(
                                                   borderRadius:
