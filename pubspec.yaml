@@ -19,7 +19,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 
 # El versionCode 8 ya se publicó en producción el 15/08/2026, así que Play
 # rechaza cualquier bundle que lo repita: el siguiente sube a 9.
-version: 1.0.7+9
+version: 1.0.8+10
 
 environment:
   sdk: ^3.5.3
@@ -66,6 +66,7 @@ dependencies:
   intl: ^0.20.2
   gal: ^2.3.1
   in_app_update: ^5.0.0
+  google_fonts: ^8.2.1
 
 dev_dependencies:
   flutter_test:
@@ -94,6 +95,10 @@ flutter:
 
   assets:
     - assets/images/
+    # Fuentes del póster empaquetadas para que google_fonts no dependa de la
+    # red. Nombres según la convención del paquete: Familia-Regular.ttf y
+    # Familia-Bold.ttf. OFL.txt reúne las licencias.
+    - google_fonts/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
